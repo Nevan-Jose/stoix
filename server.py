@@ -632,6 +632,429 @@ CRITICAL JSON OUTPUT RULES — FAILURE TO FOLLOW WILL BREAK THE SYSTEM:
     return tasks
 
 
+# ─── Blue Pill mock data ─────────────────────────────────────────────────────
+
+BLUE_PILL_MOCK_QUESTS = [
+    {
+        "title": "Espresso & Novels",
+        "type": "cafe",
+        "place": "Local Coffeehouse",
+        "distanceMiles": 0.4,
+        "travelTimeMinutes": 8,
+        "activityDurationMinutes": 45,
+        "totalTimeMinutes": 61,
+        "estimatedCost": 5,
+        "whyThisFits": "An 8-min walk and a $5 espresso gets you into a great coffeehouse for 60 minutes of solo reading.",
+        "description": "Find a corner table at your local cafe, order something warm, and bring a book or just people-watch.",
+        "tags": ["coffee", "solo", "cozy"],
+        "vibe": "\u2615",
+    },
+    {
+        "title": "Waterfront Wander",
+        "type": "fitness",
+        "place": "Nearest Park",
+        "distanceMiles": 0.9,
+        "travelTimeMinutes": 18,
+        "activityDurationMinutes": 45,
+        "totalTimeMinutes": 81,
+        "estimatedCost": 0,
+        "whyThisFits": "Free, no sign-up — a 45-min walk in nature clears your head better than anything.",
+        "description": "Head to the nearest park or waterfront path, plug in some music, and let the walk clear your head.",
+        "tags": ["walking", "outdoor", "free"],
+        "vibe": "\ud83d\udcaa",
+    },
+    {
+        "title": "New Books, Old Spines",
+        "type": "learning",
+        "place": "Local Bookstore",
+        "distanceMiles": 0.6,
+        "travelTimeMinutes": 12,
+        "activityDurationMinutes": 40,
+        "totalTimeMinutes": 64,
+        "estimatedCost": 0,
+        "whyThisFits": "Browse for free and walk out with a mental reading list for the week.",
+        "description": "Spend 40 minutes in a bookstore you haven't visited recently. Browse with no agenda.",
+        "tags": ["books", "browsing", "solo"],
+        "vibe": "\ud83d\udcda",
+    },
+    {
+        "title": "Draft Beers & Dark Wood",
+        "type": "nightlife",
+        "place": "Neighbourhood Bar",
+        "distanceMiles": 0.7,
+        "travelTimeMinutes": 14,
+        "activityDurationMinutes": 60,
+        "totalTimeMinutes": 88,
+        "estimatedCost": 15,
+        "whyThisFits": "No loud music, no attitude. $15 gets you a pint and an hour of genuine downtime.",
+        "description": "Find a proper neighbourhood bar and go between 5-7pm for the calmest experience.",
+        "tags": ["bar", "casual", "solo"],
+        "vibe": "\ud83c\udfb5",
+    },
+    {
+        "title": "Panoramic Sky Hunt",
+        "type": "random",
+        "place": "High Vantage Point",
+        "distanceMiles": 1.2,
+        "travelTimeMinutes": 22,
+        "activityDurationMinutes": 45,
+        "totalTimeMinutes": 89,
+        "estimatedCost": 0,
+        "whyThisFits": "Free viewpoint with a skyline view most locals never find.",
+        "description": "Find the highest accessible public point in your area. Bring headphones and stay till the lights come on.",
+        "tags": ["outdoor", "views", "free"],
+        "vibe": "\u2728",
+    },
+]
+
+BLUE_PILL_MOCK_SKILL = {
+    "skill": "Urban Photography",
+    "tagline": "Shoot 10 frames that actually tell a story — no camera required, just your phone.",
+    "steps": [
+        {"step": 1, "action": "Pick one subject (light, shadows, or strangers) and shoot only that for 30 minutes", "time": "Day 1"},
+        {"step": 2, "action": "Edit 3 of your best shots using Snapseed — learn the 'selective' tool", "time": "Day 2"},
+        {"step": 3, "action": "Post a photo essay (5 images + captions) to a public Instagram or Flickr", "time": "Week 1"},
+        {"step": 4, "action": "Join a photo walk with a local group and shoot alongside other people", "time": "Week 2"},
+    ],
+}
+
+SKILL_PATH_MOCK = {
+    "music": [
+        {
+            "title": "Play Your First 3 Guitar Chords",
+            "category": "Creative / Music",
+            "timeRequired": "30 min",
+            "cost": "Free",
+            "whyThisFits": "G, C, and Em unlock hundreds of songs — you can strum a full progression today with zero experience.",
+            "sessionPlan": [
+                {"step": 1, "action": "Watch a 5-min finger placement tutorial for G chord on YouTube", "duration": "5 min"},
+                {"step": 2, "action": "Practice switching between G and Em 20 times slowly", "duration": "15 min"},
+                {"step": 3, "action": "Add C chord and strum G-Em-C-Em to a backing track", "duration": "10 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Strum 4-chord progression without looking at your hands", "timeframe": "Day 3"},
+                {"milestone": 2, "goal": "Play an actual song start to finish", "timeframe": "Week 1"},
+                {"milestone": 3, "goal": "Record a 30-second clip and share it", "timeframe": "Week 2"},
+            ],
+            "emoji": "\ud83c\udfb8",
+        },
+        {
+            "title": "Beat-Make a Loop in GarageBand",
+            "category": "Creative / Production",
+            "timeRequired": "45 min",
+            "cost": "Free",
+            "whyThisFits": "GarageBand is free on Mac/iOS and has a drag-and-drop beat builder — no music theory needed.",
+            "sessionPlan": [
+                {"step": 1, "action": "Open GarageBand, New Project, Drummer track", "duration": "5 min"},
+                {"step": 2, "action": "Pick a drum style, adjust complexity and volume sliders", "duration": "10 min"},
+                {"step": 3, "action": "Add a bass loop and layer a synth pad", "duration": "30 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Build a 16-bar track with at least 3 instrument layers", "timeframe": "Day 2"},
+                {"milestone": 2, "goal": "Export and share a finished 1-minute beat", "timeframe": "Week 1"},
+                {"milestone": 3, "goal": "Recreate the intro of a favourite song by ear", "timeframe": "Week 3"},
+            ],
+            "emoji": "\ud83c\udf9b\ufe0f",
+        },
+        {
+            "title": "Sight-Read Sheet Music Basics",
+            "category": "Mental / Music Theory",
+            "timeRequired": "30 min",
+            "cost": "Free",
+            "whyThisFits": "Learning to read music unlocks every instrument — the note names take less than one session to memorise.",
+            "sessionPlan": [
+                {"step": 1, "action": "Memorise treble clef lines EGBDF, spaces FACE", "duration": "10 min"},
+                {"step": 2, "action": "Identify 20 random notes on a piano app without looking up answers", "duration": "10 min"},
+                {"step": 3, "action": "Find a simple melody as sheet music and tap out the rhythm", "duration": "10 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Name any note on treble clef in under 3 seconds", "timeframe": "Day 4"},
+                {"milestone": 2, "goal": "Play a one-line melody from sheet music", "timeframe": "Week 1"},
+                {"milestone": 3, "goal": "Read and play a 16-bar piece with both clefs", "timeframe": "Week 4"},
+            ],
+            "emoji": "\ud83c\udfbc",
+        },
+    ],
+    "fitness": [
+        {
+            "title": "First Handstand Wall Walk",
+            "category": "Physical / Calisthenics",
+            "timeRequired": "20 min",
+            "cost": "Free",
+            "whyThisFits": "Wall-assisted handstands build shoulder strength and body awareness — no equipment, no gym.",
+            "sessionPlan": [
+                {"step": 1, "action": "Wrist warm-up: 30 circles each direction, hold a plank for 30 sec", "duration": "5 min"},
+                {"step": 2, "action": "Kick up against the wall and hold for 10 seconds, rest, repeat 5x", "duration": "10 min"},
+                {"step": 3, "action": "Walk your feet up the wall slowly and try a 20-sec wall handstand hold", "duration": "5 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Hold a wall handstand for 30 unbroken seconds", "timeframe": "Day 5"},
+                {"milestone": 2, "goal": "Kick up to freestanding for 2+ seconds", "timeframe": "Week 2"},
+                {"milestone": 3, "goal": "Hold a freestanding handstand for 10 seconds", "timeframe": "Month 2"},
+            ],
+            "emoji": "\ud83e\udd38",
+        },
+        {
+            "title": "5-Minute Mobility Routine",
+            "category": "Physical / Flexibility",
+            "timeRequired": "15 min",
+            "cost": "Free",
+            "whyThisFits": "Five targeted stretches done daily eliminate most desk-job tension in two weeks.",
+            "sessionPlan": [
+                {"step": 1, "action": "90/90 hip stretch: 60 sec each side on the floor", "duration": "3 min"},
+                {"step": 2, "action": "Thoracic rotation: seated, hands behind head, rotate 10x each side", "duration": "3 min"},
+                {"step": 3, "action": "World's greatest stretch: 5 slow reps each side", "duration": "5 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Complete the full routine 5 days in a row", "timeframe": "Day 5"},
+                {"milestone": 2, "goal": "Touch the floor with straight legs", "timeframe": "Week 2"},
+                {"milestone": 3, "goal": "Hold a full pigeon pose for 90 seconds each side", "timeframe": "Week 6"},
+            ],
+            "emoji": "\ud83e\uddd8",
+        },
+        {
+            "title": "Jump Rope: From Zero to 50 Consecutive",
+            "category": "Physical / Cardio",
+            "timeRequired": "20 min",
+            "cost": "Free (if you have rope) / $10 for a speed rope",
+            "whyThisFits": "Jump rope is elite cardio you can do anywhere — beats 30 minutes jogging for calorie burn.",
+            "sessionPlan": [
+                {"step": 1, "action": "Grip check and rope length: handle should reach your armpits. Practice arm rotation without jumping", "duration": "3 min"},
+                {"step": 2, "action": "Jump 10 reps, rest 20 sec: repeat 5 rounds, counting your best streak", "duration": "10 min"},
+                {"step": 3, "action": "One final 60-sec attempt to hit a personal best unbroken streak", "duration": "7 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "50 consecutive jumps without stopping", "timeframe": "Day 3"},
+                {"milestone": 2, "goal": "200 consecutive: no trips, controlled pace", "timeframe": "Week 2"},
+                {"milestone": 3, "goal": "Learn double-unders (rope passes twice per jump)", "timeframe": "Week 4"},
+            ],
+            "emoji": "\ud83e\udea2",
+        },
+    ],
+    "default": [
+        {
+            "title": "One-Deck Card Magic",
+            "category": "Creative / Fun",
+            "timeRequired": "30 min",
+            "cost": "Free",
+            "whyThisFits": "A single card trick done well is an instant conversation starter — learn the Ambitious Card routine in one session.",
+            "sessionPlan": [
+                {"step": 1, "action": "Watch the Ambitious Card tutorial by 52Kards on YouTube", "duration": "8 min"},
+                {"step": 2, "action": "Slow-motion practice: work through the three phases alone", "duration": "15 min"},
+                {"step": 3, "action": "Perform it for someone nearby: do it twice", "duration": "7 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Perform without any hesitations or fumbles", "timeframe": "Day 2"},
+                {"milestone": 2, "goal": "Add a second trick to create a 2-minute routine", "timeframe": "Week 1"},
+                {"milestone": 3, "goal": "Perform 5-minute set for 3+ people and get a reaction", "timeframe": "Week 3"},
+            ],
+            "emoji": "\ud83c\udccf",
+        },
+        {
+            "title": "Sketch Anything in 30 Minutes",
+            "category": "Creative / Art",
+            "timeRequired": "30 min",
+            "cost": "Free",
+            "whyThisFits": "Contour drawing bypasses perfectionism — you finish today with 3 actual sketches.",
+            "sessionPlan": [
+                {"step": 1, "action": "Blind contour: pick any object, draw it without looking at the paper for 5 min", "duration": "5 min"},
+                {"step": 2, "action": "Gesture sketch: draw your non-dominant hand in 3 poses, 4 min each", "duration": "12 min"},
+                {"step": 3, "action": "Pick a still life (mug, phone, keys) and do one careful 10-min sketch", "duration": "13 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Complete one sketch per day for 7 days straight", "timeframe": "Week 1"},
+                {"milestone": 2, "goal": "Draw a recognisable portrait of someone from life", "timeframe": "Week 2"},
+                {"milestone": 3, "goal": "Fill a 20-page sketchbook", "timeframe": "Month 2"},
+            ],
+            "emoji": "\u270f\ufe0f",
+        },
+        {
+            "title": "Learn 20 Words in a New Language",
+            "category": "Mental / Language",
+            "timeRequired": "25 min",
+            "cost": "Free",
+            "whyThisFits": "Spaced repetition makes 20 words stick in one session — the first 100 words cover 50% of everyday conversation.",
+            "sessionPlan": [
+                {"step": 1, "action": "Open Duolingo, pick a language, and complete the first 2 lessons", "duration": "10 min"},
+                {"step": 2, "action": "Write the 20 new words + their meaning by hand", "duration": "10 min"},
+                {"step": 3, "action": "Cover the translation column and quiz yourself: aim for 90% accuracy", "duration": "5 min"},
+            ],
+            "levelUpPath": [
+                {"milestone": 1, "goal": "Hit a 7-day Duolingo streak", "timeframe": "Day 7"},
+                {"milestone": 2, "goal": "Hold a simple 5-sentence conversation", "timeframe": "Week 2"},
+                {"milestone": 3, "goal": "Watch a 10-min YouTube video in the language without subtitles", "timeframe": "Week 6"},
+            ],
+            "emoji": "\ud83c\udf0d",
+        },
+    ],
+}
+
+
+# ─── Blue Pill Gemini helpers ─────────────────────────────────────────────────
+
+def _build_blue_pill_quest_prompt(params):
+    loc = params.get("location", "unspecified city")
+    mins = params.get("availableTimeMinutes", 60)
+    budget = params.get("budget", 20)
+    dist = params.get("maxDistanceMiles", 2)
+    interest = params.get("interest", "anything")
+    mode = params.get("mode", "solo")
+    free_note = " (free only)" if budget == 0 else ""
+    return f"""You are a sharp city guide helping someone use their free time well.
+
+USER PROFILE:
+- Location: {loc}
+- Time available: {mins} minutes total (including travel)
+- Budget: ${budget}{free_note}
+- Max distance: {dist} miles
+- Interest: {interest}
+- Mode: {mode}
+
+Suggest 5 specific, real activities or venues near {loc} that fit this profile.
+Every quest must fit within {mins} minutes total (travel there + activity + travel back).
+
+Return ONLY valid JSON, no markdown, no extra text:
+{{
+  "quests": [
+    {{
+      "title": "creative 3-4 word quest name",
+      "type": "event|cafe|restaurant|fitness|learning|nightlife|random",
+      "place": "specific real venue or location name",
+      "distanceMiles": 0.0,
+      "travelTimeMinutes": 0,
+      "activityDurationMinutes": 0,
+      "totalTimeMinutes": 0,
+      "estimatedCost": 0,
+      "whyThisFits": "1-2 sentences referencing their time, budget, and interest",
+      "description": "2-3 sentences like a friend's recommendation: specific and honest",
+      "tags": ["tag1", "tag2"],
+      "vibe": "single emoji"
+    }}
+  ]
+}}
+
+Rules:
+- Use real, specific venues that actually exist near {loc}
+- Numbers must be realistic (travel time, cost, distance)
+- Budget $0 means free places only
+- Mix types: do not return 5 of the same category
+- Keep every totalTimeMinutes within {mins} minutes"""
+
+
+def _build_blue_pill_skill_prompt(interest, available_time):
+    return f"""Suggest ONE skill related to "{interest}" that someone can start today with {available_time} minutes free.
+
+Return ONLY valid JSON, no markdown, no extra text:
+{{
+  "skill": "skill name",
+  "tagline": "one punchy sentence about what they will achieve",
+  "steps": [
+    {{"step": 1, "action": "specific action to take", "time": "Day X or Week X"}},
+    {{"step": 2, "action": "specific action to take", "time": "Day X or Week X"}},
+    {{"step": 3, "action": "specific action to take", "time": "Day X or Week X"}},
+    {{"step": 4, "action": "specific action to take", "time": "Day X or Week X"}}
+  ]
+}}"""
+
+
+def _build_skill_path_prompt(interest):
+    return f"""Suggest 3 skills related to "{interest}" that someone can start learning today.
+
+Return ONLY valid JSON, no markdown, no extra text:
+{{
+  "skills": [
+    {{
+      "title": "skill name",
+      "category": "Domain / Subcategory",
+      "timeRequired": "X min",
+      "cost": "Free or $X",
+      "whyThisFits": "1-2 sentences explaining why this skill is a great starting point",
+      "sessionPlan": [
+        {{"step": 1, "action": "specific action", "duration": "X min"}},
+        {{"step": 2, "action": "specific action", "duration": "X min"}},
+        {{"step": 3, "action": "specific action", "duration": "X min"}}
+      ],
+      "levelUpPath": [
+        {{"milestone": 1, "goal": "achievable goal", "timeframe": "Day X or Week X"}},
+        {{"milestone": 2, "goal": "achievable goal", "timeframe": "Week X"}},
+        {{"milestone": 3, "goal": "achievable goal", "timeframe": "Month X"}}
+      ],
+      "emoji": "single relevant emoji"
+    }}
+  ]
+}}
+
+Return exactly 3 skills, ranging from beginner to more advanced. All should be actionable today."""
+
+
+def _parse_blue_pill_json(raw):
+    try:
+        clean = raw.replace("```json", "").replace("```", "").strip()
+        return json.loads(clean)
+    except Exception:
+        pass
+    m = re.search(r"\{[\s\S]*\}", raw)
+    if m:
+        try:
+            repaired = re.sub(r",(\s*[}\]])", r"\1", m.group(0))
+            return json.loads(repaired)
+        except Exception:
+            pass
+    return None
+
+
+_VIBES = {
+    "event": "\ud83c\udfdf\ufe0f", "cafe": "\u2615", "restaurant": "\ud83c\udf7d\ufe0f",
+    "fitness": "\ud83d\udcaa", "learning": "\ud83d\udcda", "nightlife": "\ud83c\udfb5", "random": "\u2728",
+}
+
+
+def blue_pill_gemini(params):
+    interest = params.get("interest", "anything")
+    available_time = params.get("availableTimeMinutes", 60)
+
+    quest_raw = call_gemini(
+        _build_blue_pill_quest_prompt(params), grounding=False, want_json=True
+    )
+    skill_raw = call_gemini(
+        _build_blue_pill_skill_prompt(interest, available_time), grounding=False, want_json=True
+    )
+
+    quest_parsed = _parse_blue_pill_json(quest_raw)
+    skill_parsed = _parse_blue_pill_json(skill_raw)
+
+    quests = quest_parsed.get("quests", []) if quest_parsed else []
+    for q in quests:
+        if not q.get("vibe"):
+            q["vibe"] = _VIBES.get(q.get("type", ""), "\u26a1")
+
+    skill = (
+        skill_parsed
+        if skill_parsed and "skill" in skill_parsed
+        else BLUE_PILL_MOCK_SKILL
+    )
+
+    return {"quests": quests or BLUE_PILL_MOCK_QUESTS, "skill": skill}
+
+
+def skill_path_gemini(interest):
+    raw = call_gemini(
+        _build_skill_path_prompt(interest), grounding=False, want_json=True
+    )
+    parsed = _parse_blue_pill_json(raw)
+    if parsed and isinstance(parsed.get("skills"), list) and parsed["skills"]:
+        return parsed["skills"]
+    return None
+
+
+def _get_mock_skills(interest):
+    key = next(
+        (k for k in SKILL_PATH_MOCK if k != "default" and k in interest.lower()),
+        "default",
+    )
+    return SKILL_PATH_MOCK[key]
+
+
 # ---------- HTTP server ----------
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -696,10 +1119,16 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if self.path != "/api/generate-tasks":
+        if self.path == "/api/generate-tasks":
+            return self._handle_generate_tasks()
+        elif self.path == "/api/blue-pill":
+            return self._handle_blue_pill()
+        elif self.path == "/api/skill-path":
+            return self._handle_skill_path()
+        else:
             self.send_error(404, "Not found")
-            return
 
+    def _handle_generate_tasks(self):
         length = int(self.headers.get("Content-Length") or 0)
         raw = self.rfile.read(length).decode("utf-8") if length else "{}"
         try:
@@ -787,6 +1216,76 @@ class Handler(BaseHTTPRequestHandler):
             )
         except Exception as e:
             print(f"[generate] error: {e}", flush=True)
+            return self._send_json(500, {"ok": False, "error": str(e)})
+
+    def _handle_blue_pill(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+        try:
+            body = json.loads(raw or "{}")
+        except Exception:
+            return self._send_json(400, {"ok": False, "error": "Invalid JSON"})
+
+        location = str(body.get("location", "")).strip()
+        interest = str(body.get("interest", "")).strip()
+        if not location:
+            return self._send_json(400, {"ok": False, "error": "Missing location"})
+        if not interest:
+            return self._send_json(400, {"ok": False, "error": "Missing interest"})
+
+        params = {
+            "location": location,
+            "availableTimeMinutes": int(body.get("availableTimeMinutes", 60)),
+            "budget": int(body.get("budget", 20)),
+            "maxDistanceMiles": float(body.get("maxDistanceMiles", 2.0)),
+            "interest": interest,
+            "mode": str(body.get("mode", "solo")).strip(),
+        }
+
+        print(
+            f'[blue-pill] location="{location}" time={params["availableTimeMinutes"]}min '
+            f'budget=${params["budget"]} interest="{interest}"',
+            flush=True,
+        )
+
+        try:
+            if GEMINI_API_KEY:
+                print("[blue-pill] calling Gemini to curate quests + skill...", flush=True)
+                result = blue_pill_gemini(params)
+            else:
+                print("[blue-pill] no API key — returning mock data", flush=True)
+                result = {"quests": BLUE_PILL_MOCK_QUESTS, "skill": BLUE_PILL_MOCK_SKILL}
+            return self._send_json(200, {"ok": True, **result})
+        except Exception as e:
+            print(f"[blue-pill] error: {e}", flush=True)
+            return self._send_json(500, {"ok": False, "error": str(e)})
+
+    def _handle_skill_path(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(length).decode("utf-8") if length else "{}"
+        try:
+            body = json.loads(raw or "{}")
+        except Exception:
+            return self._send_json(400, {"ok": False, "error": "Invalid JSON"})
+
+        interest = str(body.get("interest", "")).strip()
+        if not interest:
+            return self._send_json(400, {"ok": False, "error": "Missing interest"})
+
+        print(f'[skill-path] interest="{interest}"', flush=True)
+
+        try:
+            if GEMINI_API_KEY:
+                print("[skill-path] calling Gemini to generate skills...", flush=True)
+                skills = skill_path_gemini(interest)
+                if not skills:
+                    skills = _get_mock_skills(interest)
+            else:
+                print("[skill-path] no API key — returning mock data", flush=True)
+                skills = _get_mock_skills(interest)
+            return self._send_json(200, {"ok": True, "skills": skills})
+        except Exception as e:
+            print(f"[skill-path] error: {e}", flush=True)
             return self._send_json(500, {"ok": False, "error": str(e)})
 
 
