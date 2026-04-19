@@ -1,27 +1,64 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  ChevronLeft, ChevronRight, RotateCcw,
-  Clock, Target, Calendar,
-} from 'lucide-react';
-import {
-  format, addDays, startOfMonth, endOfMonth,
-  eachDayOfInterval, isSameDay, getDay,
-} from 'date-fns';
+import { ChevronLeft, ChevronRight, Download, RotateCcw, Clock, Target, Calendar } from 'lucide-react';
+import { format, addDays, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, getDay } from 'date-fns';
 
-// Phase → colour mapping (stays in the green/red/amber terminal palette)
-const PHASE_COLORS = {
-  Foundation: 'bg-cyan-500/20 text-cyan-400 border-cyan-500/40',
-  Build:      'bg-primary/20 text-primary border-primary/40',
-  Push:       'bg-amber-500/20 text-amber-400 border-amber-500/40',
-  Mastery:    'bg-red-500/20 text-red-400 border-red-500/40',
+const PHASE_STYLE = {
+  Foundation: { bg:'rgba(0,200,255,0.07)',  color:'#00c8ff', border:'rgba(0,200,255,0.3)'  },
+  Build:      { bg:'rgba(0,220,120,0.07)',  color:'#00dc78', border:'rgba(0,220,120,0.3)'  },
+  Push:       { bg:'rgba(255,180,0,0.07)',  color:'#ffb400', border:'rgba(255,180,0,0.3)'  },
+  Mastery:    { bg:'rgba(224,53,53,0.07)',  color:'#e03535', border:'rgba(224,53,53,0.3)'  },
+};
+
+function getPhaseStyle(phase) {
+  if (!phase) return PHASE_STYLE.Build;
+  if (PHASE_STYLE[phase]) return PHASE_STYLE[phase];
+  const lower = phase.toLowerCase();
+  const key = Object.keys(PHASE_STYLE).find(k => k.toLowerCase() === lower ||
+    k.toLowerCase().startsWith(lower.slice(0,4)));
+  return PHASE_STYLE[key] || PHASE_STYLE.Build;
+}
+
+const R = {
+  accent:    '#e03535',
+  accentDim: 'rgba(224,53,53,0.1)',
+  accentBrd: 'rgba(224,53,53,0.2)',
+  text:      '#c8d4e0',
+  textDim:   'rgba(200,212,224,0.65)',
+  panelBg:   'rgba(5,3,5,0.97)',
+  border:    'rgba(255,255,255,0.06)',
 };
 
 function parsePlanStart(startDate) {
-  if (startDate == null) return new Date();
-  return new Date(startDate);
+  return startDate == null ? new Date() : new Date(startDate);
+}
+
+function PhaseTag({ phase }) {
+  const s = PHASE_STYLE[phase] || PHASE_STYLE.Build;
+  return (
+    <span style={{ background:s.bg, color:s.color, border:`1px solid ${s.border}`,
+                   fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'9px',
+                   letterSpacing:'0.18em', padding:'2px 7px', textTransform:'uppercase' }}>
+      {phase}
+    </span>
+  );
+}
+
+function CyberBtn({ onClick, children, style }) {
+  const [hov, setHov] = useState(false);
+  return (
+    <button type="button" onClick={onClick}
+      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{ background: hov ? 'rgba(224,53,53,0.1)' : 'rgba(255,255,255,0.02)',
+               border:`1px solid ${hov ? 'rgba(224,53,53,0.4)' : 'rgba(255,255,255,0.08)'}`,
+               borderRadius:0, padding:'7px 14px', cursor:'pointer', transition:'all 0.15s',
+               display:'flex', alignItems:'center', gap:'6px',
+               fontFamily:"'Rajdhani',monospace", fontWeight:600, fontSize:'11px',
+               letterSpacing:'0.14em', textTransform:'uppercase',
+               color: hov ? R.accent : R.textDim, ...style }}>
+      {children}
+    </button>
+  );
 }
 
 export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
@@ -31,316 +68,323 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
   const [currentMonth, setCurrentMonth] = useState(() => startOfMonth(parsePlanStart(startDate)));
   const [selectedDay,  setSelectedDay]  = useState(() => parsePlanStart(startDate));
 
-  const monthDays = useMemo(() => {
-    return eachDayOfInterval({
-      start: startOfMonth(currentMonth),
-      end:   endOfMonth(currentMonth),
-    });
-  }, [currentMonth]);
+  const monthDays = useMemo(() => eachDayOfInterval({
+    start: startOfMonth(currentMonth),
+    end:   endOfMonth(currentMonth),
+  }), [currentMonth]);
 
   const startDow = getDay(startOfMonth(currentMonth));
-
   const getTaskForDate = (date) => {
     const idx = allDates.findIndex(d => isSameDay(d, date));
-    return idx >= 0 ? { ...tasks[idx], dayNumber: idx + 1 } : null;
+    return idx >= 0 ? { ...tasks[idx], dayNumber: idx+1 } : null;
   };
-
   const selectedTask = getTaskForDate(selectedDay);
 
-  const prevMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-  const nextMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  const prevMonth = () => setCurrentMonth(p => new Date(p.getFullYear(), p.getMonth()-1, 1));
+  const nextMonth = () => setCurrentMonth(p => new Date(p.getFullYear(), p.getMonth()+1, 1));
 
-  const handleDownloadIcs = () => {
-    const escapeIcsText = (s) =>
-      String(s || '')
-        .replace(/\\/g, '\\\\')
-        .replace(/;/g, '\\;')
-        .replace(/,/g, '\\,')
-        .replace(/\r\n|\n|\r/g, '\\n');
-
-    const parseDurationMinutes = (durationStr) => {
-      const m = String(durationStr || '').match(/(\d+)/);
-      if (!m) return 30;
-      return Math.min(480, Math.max(5, parseInt(m[1], 10)));
-    };
-
-    const parseClockOnDay = (dayDate, hhmm) => {
-      const d = new Date(dayDate);
-      const m = String(hhmm || '09:00').trim().match(/^(\d{1,2}):(\d{2})$/);
-      if (!m) {
-        d.setHours(9, 0, 0, 0);
-        return d;
-      }
-      d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
-      return d;
-    };
-
-    const toUtcStamp = (d) => {
-      const iso = d.toISOString();
-      return `${iso.slice(0, 10).replace(/-/g, '')}T${iso.slice(11, 19).replace(/:/g, '')}Z`;
-    };
-
-    const stampNow = toUtcStamp(new Date());
-
-    const lines = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//STOIX//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-    ];
-
+  const handleDownload = () => {
+    let csv = 'Day,Date,Weekday,Phase,Scheduled Time,Task,Milestone,Description,Duration\n';
     tasks.forEach((task, i) => {
-      const dayDate = addDays(planStart, i);
-      const start = parseClockOnDay(dayDate, task.scheduledTime);
-      const mins = parseDurationMinutes(task.duration);
-      const end = new Date(start.getTime() + mins * 60 * 1000);
-      const uid = `stoix-${format(dayDate, 'yyyyMMdd')}-${i}-${Math.random().toString(36).slice(2, 10)}@stoix.local`;
-      const summary = escapeIcsText(task.title);
-      const descParts = [
-        task.description,
-        task.phase && `Phase: ${task.phase}`,
-        task.milestone && `Milestone: ${task.milestone}`,
-        task.scheduleNote && `Schedule: ${task.scheduleNote}`,
-        `Day ${i + 1} of ${tasks.length} · ${goal}`,
-      ].filter(Boolean);
-      const description = escapeIcsText(descParts.join('\\n'));
-
-      lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${uid}`);
-      lines.push(`DTSTAMP:${stampNow}`);
-      lines.push(`DTSTART:${toUtcStamp(start)}`);
-      lines.push(`DTEND:${toUtcStamp(end)}`);
-      lines.push(`SUMMARY:${summary}`);
-      lines.push(`DESCRIPTION:${description}`);
-      lines.push('END:VEVENT');
+      const date = format(addDays(planStart, i), 'yyyy-MM-dd');
+      const q = s => `"${String(s||'').replace(/"/g,'""')}"`;
+      csv += [i+1,date,q(task.weekday),q(task.phase),q(task.scheduledTime),
+              q(task.title),q(task.milestone),q(task.description),q(task.duration)].join(',') + '\n';
     });
-
-    lines.push('END:VCALENDAR');
-
-    const ics = lines.join('\r\n');
-    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `stoix-protocol-${format(new Date(), 'yyyy-MM-dd')}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(new Blob([csv],{type:'text/csv'})),
+      download: `stoix-protocol-${format(new Date(),'yyyy-MM-dd')}.csv`,
+    });
+    a.click(); URL.revokeObjectURL(a.href);
   };
 
-  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const weekDays = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.8 }}
-      className="w-full max-w-5xl mx-auto"
-    >
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+    <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ duration:0.6 }}
+      style={{ width:'100%', maxWidth:'900px', margin:'0 auto' }}>
+
+      {/* Header */}
+      <div style={{ display:'flex', flexWrap:'wrap', alignItems:'flex-start', justifyContent:'space-between',
+                    gap:'12px', marginBottom:'20px' }}>
         <div>
-          <h2 className="text-2xl sm:text-3xl font-mono text-glow text-primary">Protocol active</h2>
-          <p className="text-primary/70 font-mono text-sm mt-1">
-            {tasks.length} days &middot;{' '}
-            {goal.length > 60 ? goal.slice(0, 60) + '…' : goal}
+          <h2 style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'22px',
+                       color:R.accent, letterSpacing:'0.1em', textShadow:`0 0 18px rgba(224,53,53,0.35)`,
+                       margin:'0 0 3px', textTransform:'uppercase' }}>
+            PROTOCOL ACTIVE
+          </h2>
+          <p style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'11px', color:R.textDim, margin:0 }}>
+            <span style={{ color:'rgba(224,53,53,0.6)', fontFamily:"'Rajdhani',monospace", fontWeight:700,
+                           fontSize:'13px' }}>{tasks.length}</span>{' '}
+            DAYS &middot; {goal.length>70 ? goal.slice(0,70)+'…' : goal}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            onClick={handleDownloadIcs}
-            variant="outline"
-            className="gap-2 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:text-primary backdrop-blur-none"
-          >
-            <Calendar className="w-4 h-4" /> Download .ics
-          </Button>
-          <Button
-            onClick={onReset}
-            variant="outline"
-            className="gap-2 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:text-primary backdrop-blur-none"
-          >
-            <RotateCcw className="w-4 h-4" /> New Mission
-          </Button>
+        <div style={{ display:'flex', gap:'6px' }}>
+          <CyberBtn onClick={handleDownload}><Download size={12}/> CSV</CyberBtn>
+          <CyberBtn onClick={onReset}><RotateCcw size={12}/> NEW MISSION</CyberBtn>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Month calendar ── */}
-        <div className="lg:col-span-2 rounded-lg p-4 sm:p-6 bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)]">
-          {/* Month nav */}
-          <div className="flex items-center justify-between mb-6">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="text-primary hover:bg-primary/10">
-              <ChevronLeft className="w-5 h-5" />
-            </Button>
-            <h3 className="font-mono text-lg text-glow">
-              {format(currentMonth, 'MMMM yyyy')}
-            </h3>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="text-primary hover:bg-primary/10">
-              <ChevronRight className="w-5 h-5" />
-            </Button>
-          </div>
+      <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'12px' }}
+           className="lg:grid-cols-3-auto">
+        <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:'12px',
+                      alignItems:'start' }} className="grid-cal-detail">
 
-          {/* Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {weekDays.map(d => (
-              <div key={d} className="text-center font-mono text-xs text-primary/65 py-2">{d}</div>
-            ))}
+          {/* Calendar panel */}
+          <div style={{ border:`1px solid ${R.accentBrd}`, background:R.panelBg, position:'relative' }}>
+            {/* Corner accents */}
+            {[{top:-1,left:-1,borderTop:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+              {top:-1,right:-1,borderTop:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`},
+              {bottom:-1,left:-1,borderBottom:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+              {bottom:-1,right:-1,borderBottom:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`}
+            ].map((s,i)=><div key={i} style={{ position:'absolute', width:8, height:8, ...s }}/>)}
 
-            {Array(startDow).fill(null).map((_, i) => <div key={`e-${i}`} />)}
+            {/* Month nav */}
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between',
+                          padding:'12px 16px', borderBottom:`1px solid rgba(224,53,53,0.1)` }}>
+              <button type="button" onClick={prevMonth}
+                style={{ background:'none', border:'none', cursor:'pointer', color:R.textDim,
+                         padding:'4px', transition:'color 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.color=R.accent}
+                onMouseLeave={e=>e.currentTarget.style.color=R.textDim}>
+                <ChevronLeft size={16}/>
+              </button>
+              <h3 style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'14px',
+                           color:R.text, letterSpacing:'0.18em', textTransform:'uppercase', margin:0 }}>
+                {format(currentMonth,'MMMM yyyy')}
+              </h3>
+              <button type="button" onClick={nextMonth}
+                style={{ background:'none', border:'none', cursor:'pointer', color:R.textDim,
+                         padding:'4px', transition:'color 0.15s' }}
+                onMouseEnter={e=>e.currentTarget.style.color=R.accent}
+                onMouseLeave={e=>e.currentTarget.style.color=R.textDim}>
+                <ChevronRight size={16}/>
+              </button>
+            </div>
 
-            {monthDays.map(day => {
-              const task       = getTaskForDate(day);
-              const isSelected = isSameDay(day, selectedDay);
-              const hasTask    = !!task;
-              const phaseClass = task ? PHASE_COLORS[task.phase] || PHASE_COLORS.Build : '';
-
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => hasTask && setSelectedDay(day)}
-                  disabled={!hasTask}
-                  className={`
-                    relative aspect-square flex flex-col items-center justify-center rounded-xl font-mono text-sm transition-all duration-200 border border-transparent
-                    ${hasTask ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/40 hover:shadow-[inset_0_0_0_1px_hsla(120,100%,50%,0.15)] active:scale-[0.97]' : 'opacity-30 cursor-default'}
-                    ${isSelected && hasTask ? 'bg-primary/15 border-primary text-primary shadow-[0_0_16px_hsla(120,100%,50%,0.2)]' : ''}
-                    ${hasTask && !isSelected ? 'text-primary' : 'text-primary/40'}
-                  `}
-                >
-                  <span>{format(day, 'd')}</span>
-                  {hasTask && (
-                    <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full border ${phaseClass}`} />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Phase legend */}
-          <div className="mt-4 pt-4 border-t border-primary/30 flex flex-wrap gap-3">
-            {Object.entries(PHASE_COLORS).map(([phase, cls]) => (
-              <span key={phase} className={`text-xs font-mono px-2 py-0.5 rounded border ${cls}`}>
-                {phase}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Task detail panel ── */}
-        <div className="rounded-lg p-4 sm:p-6 bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)]">
-          {selectedTask ? (
-            <motion.div
-              key={selectedDay.toISOString()}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-              className="space-y-4"
-            >
-              {/* Day + date */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge className="bg-primary/20 text-primary border-primary/30 font-mono">
-                  Day {selectedTask.dayNumber}
-                </Badge>
-                {selectedTask.phase && (
-                  <Badge className={`font-mono border ${PHASE_COLORS[selectedTask.phase] || PHASE_COLORS.Build}`}>
-                    {selectedTask.phase}
-                  </Badge>
-                )}
-                <span className="font-mono text-xs text-primary/65">
-                  {format(selectedDay, 'EEE, MMM d, yyyy')}
-                </span>
+            <div style={{ padding:'12px 14px' }}>
+              {/* Weekday headers */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px', marginBottom:'4px' }}>
+                {weekDays.map(d=>(
+                  <div key={d} style={{ textAlign:'center', fontFamily:"'Rajdhani',monospace",
+                                        fontWeight:600, fontSize:'9px', letterSpacing:'0.14em',
+                                        color:R.textDim, padding:'4px 0', textTransform:'uppercase' }}>
+                    {d}
+                  </div>
+                ))}
               </div>
 
-              {/* Scheduled time */}
-              {selectedTask.scheduledTime && (
-                <div className="flex items-center gap-2 text-xs font-mono text-primary/70">
-                  <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span>{selectedTask.scheduledTime}</span>
-                  {selectedTask.duration && <span>· {selectedTask.duration}</span>}
-                </div>
-              )}
+              {/* Day cells */}
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:'2px' }}>
+                {Array(startDow).fill(null).map((_,i)=><div key={`e-${i}`}/>)}
+                {monthDays.map(day=>{
+                  const task       = getTaskForDate(day);
+                  const isSelected = isSameDay(day, selectedDay);
+                  const hasTask    = !!task;
+                  const ps         = task ? getPhaseStyle(task.phase) : null;
+                  return (
+                    <button key={day.toISOString()} type="button"
+                      onClick={()=>hasTask&&setSelectedDay(day)} disabled={!hasTask}
+                      style={{ aspectRatio:'1', display:'flex', flexDirection:'column',
+                               alignItems:'center', justifyContent:'center', position:'relative',
+                               background: isSelected&&hasTask ? ps.bg : 'transparent',
+                               border: isSelected&&hasTask ? `1px solid ${ps.border}` : '1px solid transparent',
+                               cursor: hasTask ? 'pointer' : 'default',
+                               opacity: hasTask ? 1 : 0.2, transition:'all 0.12s',
+                               fontFamily:"'Share Tech Mono',monospace", fontSize:'11px',
+                               color: isSelected&&hasTask ? ps.color : R.text }}>
+                      {format(day,'d')}
+                      {hasTask && (
+                        <div style={{ position:'absolute', bottom:'3px', width:'4px', height:'4px',
+                                      background: ps?.color||R.accent,
+                                      boxShadow:`0 0 4px ${ps?.color||R.accent}` }}/>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
 
-              {/* Milestone */}
-              {selectedTask.milestone && (
-                <div className="flex items-start gap-2 text-xs font-mono">
-                  <Target className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-primary/75 leading-relaxed">{selectedTask.milestone}</span>
-                </div>
-              )}
-
-              {/* Title */}
-              <h3 className="font-mono text-lg text-glow leading-snug">
-                {selectedTask.title}
-              </h3>
-
-              {/* Description */}
-              <p className="font-mono text-sm text-primary/75 leading-relaxed whitespace-pre-line">
-                {selectedTask.description}
-              </p>
-
-              {/* Schedule note */}
-              {selectedTask.scheduleNote && (
-                <div className="pt-3 border-t border-primary/30">
-                  <div className="flex items-start gap-2 text-xs font-mono text-primary/65">
-                    <Calendar className="w-3 h-3 flex-shrink-0 mt-0.5 text-primary/60" />
-                    <span className="italic">{selectedTask.scheduleNote}</span>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <div className="flex items-center justify-center h-full min-h-[200px]">
-              <p className="font-mono text-sm text-primary/60 text-center">
-                Select a day on the calendar<br />to view its task
-              </p>
+              {/* Phase legend */}
+              <div style={{ marginTop:'12px', paddingTop:'12px', borderTop:`1px solid ${R.border}`,
+                            display:'flex', flexWrap:'wrap', gap:'6px' }}>
+                {Object.entries(PHASE_STYLE).map(([phase,s])=>(
+                  <span key={phase} style={{ background:s.bg, color:s.color, border:`1px solid ${s.border}`,
+                                             fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'8px',
+                                             letterSpacing:'0.16em', padding:'2px 8px', textTransform:'uppercase' }}>
+                    {phase}
+                  </span>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ── All-days list (mobile-friendly) ── */}
-      <div className="mt-6 rounded-lg bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)] overflow-hidden">
-        <div className="p-4 border-b border-primary/35 flex items-center gap-3">
-          <h3 className="font-mono text-lg text-glow text-primary">All days</h3>
-          <span className="font-mono text-xs text-primary/65">{tasks.length} tasks</span>
-        </div>
-        <div className="max-h-[400px] overflow-y-auto">
-          {tasks.map((task, i) => {
-            const phaseClass  = PHASE_COLORS[task.phase] || PHASE_COLORS.Build;
-            const isActive    = selectedTask?.dayNumber === i + 1;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: Math.min(i * 0.02, 1) }}
-                className={`p-4 border-b border-primary/20 hover:bg-primary/5 cursor-pointer transition-colors ${isActive ? 'bg-primary/10' : ''}`}
-                onClick={() => setSelectedDay(addDays(planStart, i))}
-              >
-                <div className="flex items-start gap-3">
-                  <div className="flex flex-col items-center gap-1 min-w-[50px]">
-                    <span className="font-mono text-xs text-primary/65">Day {i + 1}</span>
-                    {task.scheduledTime && (
-                      <span className="font-mono text-[10px] text-primary/70">{task.scheduledTime}</span>
-                    )}
+          {/* Task detail panel */}
+          <div style={{ border:`1px solid ${R.accentBrd}`, background:R.panelBg,
+                        position:'relative', minHeight:'300px' }}>
+            {[{top:-1,left:-1,borderTop:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+              {top:-1,right:-1,borderTop:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`},
+              {bottom:-1,left:-1,borderBottom:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+              {bottom:-1,right:-1,borderBottom:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`}
+            ].map((s,i)=><div key={i} style={{ position:'absolute', width:8, height:8, ...s }}/>)}
+
+            <div style={{ padding:'10px 14px', borderBottom:`1px solid rgba(224,53,53,0.1)`,
+                          background:'rgba(224,53,53,0.03)' }}>
+              <span style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'9px',
+                             letterSpacing:'0.22em', color:'rgba(224,53,53,0.5)', textTransform:'uppercase' }}>
+                TASK DETAIL
+              </span>
+            </div>
+
+            <div style={{ padding:'14px' }}>
+              {selectedTask ? (
+                <motion.div key={selectedDay.toISOString()}
+                  initial={{ opacity:0, x:8 }} animate={{ opacity:1, x:0 }}
+                  transition={{ duration:0.25 }}
+                  style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap' }}>
+                    <span style={{ background:'rgba(224,53,53,0.1)', color:R.accent,
+                                   border:`1px solid rgba(224,53,53,0.3)`,
+                                   fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'9px',
+                                   letterSpacing:'0.16em', padding:'2px 8px', textTransform:'uppercase' }}>
+                      DAY {selectedTask.dayNumber}
+                    </span>
+                    {selectedTask.phase && <PhaseTag phase={selectedTask.phase}/>}
+                    <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'9px', color:R.textDim }}>
+                      {format(selectedDay,'EEE, MMM d, yyyy')}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <p className="font-mono text-sm text-primary truncate">{task.title}</p>
-                      {task.phase && (
-                        <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border flex-shrink-0 ${phaseClass}`}>
-                          {task.phase}
+
+                  {selectedTask.scheduledTime && (
+                    <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                      <Clock size={11} style={{ color:R.accent, flexShrink:0 }}/>
+                      <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'11px', color:R.textDim }}>
+                        {selectedTask.scheduledTime}{selectedTask.duration&&` · ${selectedTask.duration}`}
+                      </span>
+                    </div>
+                  )}
+
+                  {selectedTask.milestone && (
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:'6px' }}>
+                      <Target size={11} style={{ color:R.accent, flexShrink:0, marginTop:2 }}/>
+                      <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'10px', color:R.textDim,
+                                     lineHeight:1.5 }}>
+                        {selectedTask.milestone}
+                      </span>
+                    </div>
+                  )}
+
+                  <div style={{ width:'100%', height:'1px', background:`linear-gradient(90deg, ${R.accent}44, transparent)` }}/>
+
+                  <h3 style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'16px',
+                               color:R.text, letterSpacing:'0.04em', margin:0, textTransform:'uppercase',
+                               textShadow:`0 0 12px rgba(224,53,53,0.2)` }}>
+                    {selectedTask.title}
+                  </h3>
+
+                  <p style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'11px', color:R.textDim,
+                              lineHeight:1.6, margin:0, whiteSpace:'pre-line' }}>
+                    {selectedTask.description}
+                  </p>
+
+                  {selectedTask.scheduleNote && (
+                    <div style={{ paddingTop:'8px', borderTop:`1px solid ${R.border}`,
+                                  display:'flex', alignItems:'flex-start', gap:'6px' }}>
+                      <Calendar size={10} style={{ color:'rgba(224,53,53,0.4)', flexShrink:0, marginTop:2 }}/>
+                      <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'10px',
+                                     color:'rgba(200,212,224,0.22)', fontStyle:'italic', lineHeight:1.5 }}>
+                        {selectedTask.scheduleNote}
+                      </span>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center',
+                              minHeight:'200px' }}>
+                  <p style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'11px', color:R.textDim,
+                              textAlign:'center', lineHeight:1.6 }}>
+                    Select a day on the calendar<br/>to view its task
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* All days list */}
+        <div style={{ border:`1px solid ${R.accentBrd}`, background:R.panelBg,
+                      overflow:'hidden', marginTop:'12px', position:'relative' }}>
+          {[{top:-1,left:-1,borderTop:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+            {top:-1,right:-1,borderTop:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`},
+            {bottom:-1,left:-1,borderBottom:`2px solid ${R.accent}`,borderLeft:`2px solid ${R.accent}`},
+            {bottom:-1,right:-1,borderBottom:`2px solid ${R.accent}`,borderRight:`2px solid ${R.accent}`}
+          ].map((s,i)=><div key={i} style={{ position:'absolute', width:8, height:8, ...s }}/>)}
+
+          <div style={{ padding:'10px 16px', borderBottom:`1px solid rgba(224,53,53,0.1)`,
+                        background:'rgba(224,53,53,0.03)', display:'flex', alignItems:'center', gap:'10px' }}>
+            <span style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'12px',
+                           color:R.text, letterSpacing:'0.14em', textTransform:'uppercase' }}>
+              ALL DAYS
+            </span>
+            <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'10px', color:R.textDim }}>
+              {tasks.length} tasks
+            </span>
+          </div>
+
+          <div style={{ maxHeight:'320px', overflowY:'auto' }} className="cyber-scroll">
+            {tasks.map((task, i) => {
+              const ps       = getPhaseStyle(task.phase);
+              const isActive = selectedTask?.dayNumber===i+1;
+              return (
+                <motion.div key={i}
+                  initial={{ opacity:0 }} animate={{ opacity:1 }}
+                  transition={{ delay: Math.min(i*0.015,0.8) }}
+                  onClick={()=>setSelectedDay(addDays(planStart,i))}
+                  style={{ padding:'10px 16px', borderBottom:`1px solid ${R.border}`,
+                           cursor:'pointer', transition:'background 0.12s',
+                           background: isActive ? ps.bg : 'transparent',
+                           borderLeft: isActive ? `2px solid ${ps.color}` : '2px solid transparent' }}
+                  onMouseEnter={e=>{if(!isActive)e.currentTarget.style.background='rgba(255,255,255,0.02)';}}
+                  onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background='transparent';}}>
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:'10px' }}>
+                    <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-start',
+                                  minWidth:'52px', gap:'2px' }}>
+                      <span style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'10px',
+                                     color: ps.color, letterSpacing:'0.12em', opacity: 0.75 }}>
+                        DAY {i+1}
+                      </span>
+                      {task.scheduledTime && (
+                        <span style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'9px',
+                                       color:R.textDim }}>
+                          {task.scheduledTime}
                         </span>
                       )}
                     </div>
-                    <p className="font-mono text-xs text-primary/60">
-                      {format(addDays(planStart, i), 'MMM d')}
-                      {task.duration && ` · ${task.duration}`}
-                    </p>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:'6px', flexWrap:'wrap', marginBottom:'2px' }}>
+                        <p style={{ fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'13px',
+                                    color:R.text, margin:0, overflow:'hidden', textOverflow:'ellipsis',
+                                    whiteSpace:'nowrap', maxWidth:'100%', letterSpacing:'0.03em' }}>
+                          {task.title}
+                        </p>
+                        {task.phase && (
+                          <span style={{ background:ps.bg, color:ps.color, border:`1px solid ${ps.border}`,
+                                         fontFamily:"'Rajdhani',monospace", fontWeight:700, fontSize:'8px',
+                                         letterSpacing:'0.14em', padding:'1px 5px', textTransform:'uppercase',
+                                         flexShrink:0 }}>
+                            {task.phase}
+                          </span>
+                        )}
+                      </div>
+                      <p style={{ fontFamily:"'Share Tech Mono',monospace", fontSize:'10px', color:R.textDim, margin:0 }}>
+                        {format(addDays(planStart,i),'MMM d')}{task.duration&&` · ${task.duration}`}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </motion.div>
