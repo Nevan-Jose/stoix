@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Loader2, MapPin, Clock, DollarSign, Compass, Target } from 'lucide-react';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
+import { STOIX_MATRIX_INTENSITY, STOIX_MATRIX_SPEED } from '@/lib/matrix-rain-presets';
 import { useToast } from '@/components/ui/use-toast';
 import { goBackNavigate } from '@/lib/stoix-nav';
 
@@ -97,7 +98,7 @@ function SkillPathCard({ skill, index }) {
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="font-mono text-[10px] text-blue-500/60 hover:text-blue-400 mt-2 transition-colors"
+            className="mt-2 rounded-lg px-2 py-1 font-mono text-[10px] text-blue-400/75 transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-300 hover:shadow-[0_0_14px_rgba(56,189,248,0.15)] active:scale-[0.98]"
           >
             {expanded ? '[ hide plan ]' : '[ view session plan + milestones ]'}
           </button>
@@ -276,10 +277,10 @@ function SideQuestsForm({ onSubmit, isLoading }) {
                 type="button"
                 onClick={() => setMode(m)}
                 disabled={isLoading}
-                className={`flex-1 rounded font-mono text-xs transition-colors ${
+                className={`flex-1 rounded-lg border font-mono text-xs transition-all duration-200 active:scale-[0.98] ${
                   mode === m
-                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
-                    : 'bg-background border border-border text-muted-foreground hover:text-foreground'
+                    ? 'border-sky-400/50 bg-gradient-to-b from-sky-500/25 to-blue-600/15 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_16px_rgba(56,189,248,0.18)]'
+                    : 'border-border/80 bg-background/80 text-muted-foreground hover:border-sky-500/25 hover:text-foreground hover:bg-blue-500/5'
                 }`}
               >
                 {m}
@@ -304,8 +305,9 @@ function SideQuestsForm({ onSubmit, isLoading }) {
 
       <Button
         type="submit"
+        variant="blue"
         disabled={!location.trim() || !interest.trim() || isLoading}
-        className="w-full font-mono text-sm tracking-wider uppercase bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/50 h-10"
+        className="w-full text-sm tracking-wider uppercase"
       >
         {isLoading ? (
           <span className="flex items-center gap-2">
@@ -348,8 +350,9 @@ function SkillForm({ onSubmit, isLoading }) {
 
       <Button
         type="submit"
+        variant="blue"
         disabled={!interest.trim() || isLoading}
-        className="w-full font-mono text-sm tracking-wider uppercase bg-blue-600 hover:bg-blue-500 text-white border border-blue-500/50 h-10"
+        className="w-full text-sm tracking-wider uppercase"
       >
         {isLoading ? (
           <span className="flex items-center gap-2">
@@ -444,7 +447,7 @@ export default function BluePill() {
 
   return (
     <div className="min-h-screen bg-background relative">
-      <MatrixRainBg intensity={0.3} speed={0.3} />
+      <MatrixRainBg intensity={STOIX_MATRIX_INTENSITY} speed={STOIX_MATRIX_SPEED} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         {/* Header */}
@@ -454,14 +457,16 @@ export default function BluePill() {
           transition={{ duration: 0.6 }}
           className="py-6 px-6 sm:px-12 flex items-center gap-4"
         >
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             onClick={() => goBackNavigate(navigate)}
-            className="text-muted-foreground hover:text-foreground transition-colors p-0 bg-transparent border-0 cursor-pointer"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
             aria-label="Back"
           >
             <ArrowLeft className="w-4 h-4" />
-          </button>
+          </Button>
           <div>
             <h1
               className="font-mono text-xl sm:text-2xl tracking-widest"
@@ -493,10 +498,10 @@ export default function BluePill() {
                     key={key}
                     type="button"
                     onClick={() => setActiveTab(key)}
-                    className={`px-4 py-2 rounded font-mono text-xs transition-colors ${
+                    className={`rounded-lg px-4 py-2 font-mono text-xs transition-all duration-200 active:scale-[0.98] border ${
                       activeTab === key
-                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                        : 'text-muted-foreground hover:text-foreground'
+                        ? 'border-sky-400/45 bg-gradient-to-b from-sky-500/22 to-blue-700/12 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_18px_rgba(56,189,248,0.16)]'
+                        : 'border-transparent text-muted-foreground hover:border-sky-500/20 hover:bg-blue-500/5 hover:text-foreground'
                     }`}
                   >
                     {label}
@@ -531,7 +536,7 @@ export default function BluePill() {
                   <button
                     type="button"
                     onClick={() => { setQuests(null); setQuestSkill(null); }}
-                    className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-muted-foreground transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
                   >
                     [ new search ]
                   </button>
@@ -571,7 +576,7 @@ export default function BluePill() {
                   <button
                     type="button"
                     onClick={() => setSkills(null)}
-                    className="font-mono text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-muted-foreground transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
                   >
                     [ new search ]
                   </button>

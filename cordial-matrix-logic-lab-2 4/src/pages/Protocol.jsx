@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
+import { STOIX_MATRIX_INTENSITY, STOIX_MATRIX_SPEED } from '@/lib/matrix-rain-presets';
 import GoalForm from '../components/matrix/GoalForm';
 import TaskCalendar from '../components/matrix/TaskCalendar';
 import { format, startOfDay } from 'date-fns';
@@ -102,7 +104,7 @@ export default function Protocol() {
 
   return (
     <div className="min-h-screen bg-background relative scanline-overlay">
-      <MatrixRainBg intensity={1.08} speed={0.78} />
+      <MatrixRainBg intensity={STOIX_MATRIX_INTENSITY} speed={STOIX_MATRIX_SPEED} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         <motion.header
@@ -112,14 +114,16 @@ export default function Protocol() {
           className="py-6 px-6 sm:px-12"
         >
           <div className="flex items-start gap-3">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="icon"
               onClick={() => goBackNavigate(navigate)}
-              className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1 mt-0.5 rounded-md shrink-0 bg-transparent border-0 cursor-pointer"
+              className="shrink-0 -ml-1 mt-0.5 text-muted-foreground hover:text-foreground"
               aria-label="Back"
             >
               <ArrowLeft className="w-4 h-4" />
-            </button>
+            </Button>
             <div className="min-w-0">
               <h1 className="font-mono text-xl sm:text-2xl text-glow-strong tracking-widest">
                 STOIX // RED PILL
@@ -131,7 +135,7 @@ export default function Protocol() {
           </div>
         </motion.header>
 
-        <main className="flex-1 flex items-start justify-center px-4 sm:px-6 pb-12 pt-4 sm:pt-8">
+        <main className="flex-1 flex items-start justify-center px-4 sm:px-6 pb-24 sm:pb-28 pt-4 sm:pt-8 overflow-x-hidden">
           {!tasks ? (
             <GoalForm onSubmit={generateTasks} isLoading={isLoading} />
           ) : (

@@ -128,7 +128,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
       transition={{ duration: 0.8, delay: 0.2 }}
       className="w-full max-w-xl mx-auto"
     >
-      <div className="border border-border border-glow rounded-lg p-6 sm:p-8 bg-card/80 backdrop-blur-sm">
+      <div className="relative z-20 border border-border border-glow rounded-lg p-6 sm:p-8 bg-card/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
         <p className="font-mono text-xs text-primary/80 tracking-widest mb-2">
           [ PROTOCOL INITIALIZATION ]
         </p>
@@ -139,7 +139,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
           State your objective and timeline. STOIX builds a sequenced daily protocol toward it.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 pb-1">
           {/* Goal input with paste + drag support */}
           <div className="space-y-2">
             <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
@@ -164,7 +164,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
               <button
                 type="button"
                 onClick={() => imageInputRef.current?.click()}
-                className="absolute top-2 right-2 p-1.5 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                className="absolute top-2 right-2 p-1.5 rounded-lg border border-transparent text-muted-foreground transition-all duration-200 hover:text-primary hover:bg-primary/12 hover:border-primary/35 hover:shadow-[0_0_14px_hsla(120,100%,50%,0.12)] active:scale-95 disabled:opacity-50"
                 title="Attach calendar image or .ics — or paste with Cmd+V"
                 aria-label="Attach calendar file"
                 disabled={isLoading}
@@ -195,10 +195,10 @@ export default function GoalForm({ onSubmit, isLoading }) {
                   key={key}
                   type="button"
                   onClick={() => setCalTab(key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 active:scale-[0.98] border ${
                     calTab === key
-                      ? 'bg-primary/20 text-primary border border-primary/30'
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'bg-gradient-to-b from-primary/28 to-primary/10 text-primary border-primary/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_18px_hsla(120,100%,50%,0.14)]'
+                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/35 hover:border-border/60'
                   }`}
                   disabled={isLoading}
                 >
@@ -213,7 +213,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-lg p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                  className="w-full border-2 border-dashed border-border/90 hover:border-primary/55 rounded-xl p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200 bg-card/20 hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
                   disabled={isLoading || calImages.length >= 5}
                 >
                   <Paperclip className="w-4 h-4 mx-auto mb-1 opacity-60" />
@@ -229,7 +229,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                         <button
                           type="button"
                           onClick={() => removeImage(idx)}
-                          className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/70 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                          className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/75 text-white rounded-full flex items-center justify-center border border-white/10 shadow-md transition-all duration-200 hover:bg-red-600 hover:border-red-400/40 hover:scale-110 active:scale-95"
                           aria-label="Remove image"
                         >
                           <X className="w-2.5 h-2.5" />
@@ -248,7 +248,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                   <button
                     type="button"
                     onClick={() => icsInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-border hover:border-primary/50 rounded-lg p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-colors"
+                    className="w-full border-2 border-dashed border-border/90 hover:border-primary/55 rounded-xl p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200 bg-card/20 hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
                     disabled={isLoading}
                   >
                     <Calendar className="w-4 h-4 mx-auto mb-1 opacity-60" />
@@ -261,7 +261,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                     <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
                     <span className="flex-1 truncate text-foreground">{calIcs.name}</span>
                     <span className="text-muted-foreground">{Math.max(1, Math.round(calIcs.size / 1024))} KB</span>
-                    <button type="button" onClick={removeICS} className="text-muted-foreground hover:text-red-400 transition-colors" aria-label="Remove">
+                    <button type="button" onClick={removeICS} className="rounded-lg p-1 text-muted-foreground transition-all duration-200 hover:text-red-400 hover:bg-red-500/10 active:scale-95" aria-label="Remove">
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -345,6 +345,8 @@ export default function GoalForm({ onSubmit, isLoading }) {
 
           <Button
             type="submit"
+            variant="destructive"
+            size="lg"
             disabled={
               !goal.trim() ||
               !days ||
@@ -353,7 +355,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
               parseInt(dailyMinutes, 10) > 60 ||
               isLoading
             }
-            className="w-full font-mono text-lg tracking-wider uppercase bg-primary text-primary-foreground hover:bg-primary/80 border border-primary/50 transition-all duration-300 h-12"
+            className="w-full text-lg tracking-wider uppercase ring-1 ring-[#fecaca]/70 drop-shadow-[0_0_20px_rgba(248,113,113,0.85),0_0_40px_rgba(252,165,165,0.45)]"
           >
             {isLoading ? (
               <span className="flex items-center gap-3">

@@ -147,18 +147,10 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            onClick={handleDownloadIcs}
-            variant="outline"
-            className="font-mono border-border text-foreground hover:bg-accent gap-2"
-          >
+          <Button onClick={handleDownloadIcs} variant="outline" className="gap-2">
             <Calendar className="w-4 h-4" /> Download .ics
           </Button>
-          <Button
-            onClick={onReset}
-            variant="outline"
-            className="font-mono border-border text-foreground hover:bg-accent gap-2"
-          >
+          <Button onClick={onReset} variant="outline" className="gap-2">
             <RotateCcw className="w-4 h-4" /> New Mission
           </Button>
         </div>
@@ -169,13 +161,13 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
         <div className="lg:col-span-2 border border-border border-glow rounded-lg p-4 sm:p-6 bg-card/80 backdrop-blur-sm">
           {/* Month nav */}
           <div className="flex items-center justify-between mb-6">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="text-foreground hover:bg-accent">
+            <Button variant="ghost" size="icon" onClick={prevMonth} className="text-foreground">
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h3 className="font-mono text-lg text-glow">
               {format(currentMonth, 'MMMM yyyy')}
             </h3>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="text-foreground hover:bg-accent">
+            <Button variant="ghost" size="icon" onClick={nextMonth} className="text-foreground">
               <ChevronRight className="w-5 h-5" />
             </Button>
           </div>
@@ -200,9 +192,9 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
                   onClick={() => hasTask && setSelectedDay(day)}
                   disabled={!hasTask}
                   className={`
-                    relative aspect-square flex flex-col items-center justify-center rounded font-mono text-sm transition-all duration-200
-                    ${hasTask ? 'cursor-pointer hover:bg-primary/20' : 'opacity-30 cursor-default'}
-                    ${isSelected && hasTask ? 'bg-primary/30 border border-primary text-foreground' : ''}
+                    relative aspect-square flex flex-col items-center justify-center rounded-xl font-mono text-sm transition-all duration-200 border border-transparent
+                    ${hasTask ? 'cursor-pointer hover:bg-primary/15 hover:border-primary/25 hover:shadow-[inset_0_0_0_1px_hsla(120,100%,50%,0.12)] active:scale-[0.97]' : 'opacity-30 cursor-default'}
+                    ${isSelected && hasTask ? 'bg-gradient-to-b from-primary/38 to-primary/18 border-primary/55 text-foreground shadow-[0_0_16px_hsla(120,100%,50%,0.18)]' : ''}
                     ${hasTask && !isSelected ? 'text-foreground' : 'text-muted-foreground'}
                   `}
                 >

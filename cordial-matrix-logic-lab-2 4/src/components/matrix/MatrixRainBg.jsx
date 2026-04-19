@@ -1,13 +1,38 @@
 import { useEffect, useRef } from 'react';
 
+// Half-width katakana + digits + binary — “Matrix code” style (not uniform 0/1 only).
+const MATRIX_CODE_POOL =
+  '01ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾜﾝﾞﾟ23456789';
+
+function pickMatrixGlyph() {
+  return MATRIX_CODE_POOL[
+    Math.floor(Math.random() * MATRIX_CODE_POOL.length)
+  ];
+}
+
 // Smooth ambient digital rain. Intensity/speed update every render via refs so the
 // canvas loop is not torn down when props change (e.g. intro ramp → full background).
-export default function MatrixRainBg({ intensity = 1, speed = 1 }) {
+/**
+ * @param {object} props
+ * @param {number} [props.intensity]
+ * @param {number} [props.speed]
+ * @param {number} [props.coverage]
+ * @param {boolean} [props.thinBinary]
+ */
+export default function MatrixRainBg(props) {
+  const {
+    intensity = 1,
+    speed = 1,
+    coverage,
+    thinBinary = false,
+  } = props;
   const canvasRef = useRef(null);
   const intensityRef = useRef(intensity);
   const speedRef = useRef(speed);
+  const coverageRef = useRef(coverage);
   intensityRef.current = intensity;
   speedRef.current = speed;
+  coverageRef.current = coverage;
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -19,10 +44,13 @@ export default function MatrixRainBg({ intensity = 1, speed = 1 }) {
       canvas.height = window.innerHeight;
     };
 
-    const fontSize = 14;
+    const fontSize = thinBinary ? 13 : 15;
+    const fontCss = `300 ${fontSize}px "Share Tech Mono", "VT323", monospace`;
+    // Tighter horizontal step than glyph width → more columns / more drops (slight overlap).
+    const colStep = fontSize * 0.48;
 
     const rebuildColumns = () => {
-      const columns = Math.floor(canvas.width / fontSize);
+      const columns = Math.floor(canvas.width / colStep);
       return {
         columns,
         drops: Array(columns)
@@ -30,10 +58,10 @@ export default function MatrixRainBg({ intensity = 1, speed = 1 }) {
           .map(() => Math.random() * -(canvas.height / fontSize)),
         columnBases: Array(columns)
           .fill(0)
-          .map(() => 0.2 + Math.random() * 0.4),
+          .map(() => 0.28 + Math.random() * 0.48),
         columnOpacity: Array(columns)
           .fill(0)
-          .map(() => 0.32 + Math.random() * 0.58),
+          .map(() => 0.38 + Math.random() * 0.52),
       };
     };
 
@@ -55,31 +83,70 @@ export default function MatrixRainBg({ intensity = 1, speed = 1 }) {
 
     const draw = () => {
       const raw = Math.max(0.02, intensityRef.current);
-      const intensity = Math.min(1.85, raw * 1.38);
-      const speedMul = Math.max(0.05, speedRef.current);
+      const intensity = Math.min(4.45, raw * 1.38);
+      const speedMul = Math.max(0.05, Math.min(4.6, speedRef.current));
+      const covRaw = coverageRef.current;
+      const hasCoverage = covRaw != null && Number.isFinite(covRaw);
+      const cov = hasCoverage ? Math.min(1, Math.max(0, covRaw)) : null;
 
-      // Strong green wash — brighter, denser field
-      ctx.fillStyle = `rgba(0, 5, 0, ${0.09 + 0.16 * intensity})`;
+      let fadeAlpha;
+      if (cov == null) {
+        fadeAlpha = 0.085 + 0.2 * Math.min(2.85, intensity);
+      } else {
+        const fillRatio = Math.min(1, cov / 0.8);
+        // ~80% fill at fillRatio 1; keep a tiny wash so the field stays soft, not muddy
+        fadeAlpha = 0.048 + 0.42 * (1 - fillRatio) ** 2.1;
+      }
+
+      ctx.fillStyle = `rgba(0, 8, 2, ${fadeAlpha})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.font = `${fontSize}px 'VT323', monospace`;
+      ctx.font = fontCss;
+
+      const fillRatio = cov == null ? 0 : Math.min(1, cov / 0.8);
+      const tailSteps =
+        cov == null
+          ? Math.max(
+              1,
+              Math.min(5, Math.round(1 + Math.max(0, intensity - 1.2) * 0.82))
+            )
+          : Math.max(1, Math.floor(1 + fillRatio * 15 + intensity * 0.3));
+      const softField = cov != null && fillRatio > 0.2;
 
       for (let i = 0; i < columns; i++) {
-        const char = Math.random() > 0.5 ? '1' : '0';
-        const x = i * fontSize;
-        const y = drops[i] * fontSize;
+        const x = i * colStep;
 
-        const rand = Math.random();
-        const op = Math.min(1, columnOpacity[i] * (0.55 + 0.58 * intensity));
-        if (rand > 0.98) {
-          ctx.fillStyle = `rgba(220, 255, 220, ${Math.min(1, (0.92 + Math.random() * 0.08) * intensity)})`;
-        } else if (rand > 0.92) {
-          ctx.fillStyle = `rgba(0, 255, 95, ${op})`;
-        } else {
-          ctx.fillStyle = `rgba(0, ${130 + Math.floor(80 * columnOpacity[i])}, ${42 + Math.floor(30 * columnOpacity[i])}, ${Math.min(1, op * 0.96)})`;
-        }
+        for (let t = 0; t < tailSteps; t++) {
+          const row = drops[i] - t * 0.94;
+          const y = row * fontSize;
+          if (y <= 0 || y >= canvas.height) continue;
 
-        if (y > 0 && y < canvas.height) {
+          const tailFalloff = tailSteps > 1 ? Math.pow(0.84, t) : 1;
+          const rand = Math.random();
+          const char = pickMatrixGlyph();
+          const op = Math.min(
+            1,
+            columnOpacity[i] * (0.48 + 0.58 * intensity) * tailFalloff
+          );
+
+          if (softField) {
+            if (rand > 0.993) {
+              ctx.fillStyle = `rgba(210, 255, 225, ${Math.min(0.92, (0.42 + rand * 0.2) * intensity * tailFalloff)})`;
+            } else if (rand > 0.94) {
+              ctx.fillStyle = `rgba(52, 210, 130, ${op * 0.92})`;
+            } else {
+              const g = 118 + Math.floor(55 * columnOpacity[i]);
+              const b = 68 + Math.floor(35 * columnOpacity[i]);
+              ctx.fillStyle = `rgba(12, ${g}, ${b}, ${Math.min(1, op * 0.94)})`;
+            }
+          } else if (rand > 0.965) {
+            ctx.fillStyle = `rgba(220, 255, 220, ${Math.min(1, (0.92 + Math.random() * 0.08) * intensity * tailFalloff)})`;
+          } else if (rand > 0.898) {
+            ctx.fillStyle = `rgba(0, 255, 95, ${op})`;
+          } else {
+            ctx.fillStyle = `rgba(0, ${130 + Math.floor(80 * columnOpacity[i])}, ${42 + Math.floor(30 * columnOpacity[i])}, ${Math.min(1, op * 0.96)})`;
+          }
+
           ctx.fillText(char, x, y);
         }
 
@@ -100,7 +167,7 @@ export default function MatrixRainBg({ intensity = 1, speed = 1 }) {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
     };
-  }, []);
+  }, [thinBinary]);
 
   return (
     <canvas
