@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
+import { isStoixLocal } from '@/lib/stoix-local';
 
 const AuthContext = createContext();
 
@@ -19,6 +20,15 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const checkAppState = async () => {
+    if (isStoixLocal) {
+      setAuthError(null);
+      setIsLoadingPublicSettings(false);
+      setIsLoadingAuth(false);
+      setIsAuthenticated(false);
+      setAuthChecked(true);
+      return;
+    }
+
     try {
       setIsLoadingPublicSettings(true);
       setAuthError(null);

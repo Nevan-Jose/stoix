@@ -1,14 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
-import IntenseRainTransition from '../components/matrix/IntenseRainTransition';
 
 // Phases:
-// 'hello'       — types "Hello" slowly, then waits 5s
-// 'question'    — fades in question text, waits 10s
-// 'rain'        — intense full-screen binary rain for ~3.5s
-// 'dashboard'   — show what the site does + blue/red pill choice
+// 'hello'     — type greeting (DEV: "gay"; prod: "Hello."), hold 3s → question
+// 'question'  — type question, hold 5s → choice (live rain + pill UI)
+// 'choice'    — MatrixRainBg + "Which side are you on?" (red / blue pill)
 
 function useTypewriter(text, charDelay, startTyping) {
   const [displayed, setDisplayed] = useState('');
@@ -33,76 +31,82 @@ function useTypewriter(text, charDelay, startTyping) {
   return { displayed, done };
 }
 
+const pillShellClass =
+  'group cursor-pointer transition-all duration-300 hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:ring-primary rounded-full';
+
+function PillButton({ tone, title, strong, children, onClick }) {
+  const isRed = tone === 'red';
+  return (
+    <button type="button" onClick={onClick} className={pillShellClass} aria-label={title}>
+      <div
+        className="flex flex-col items-center gap-3 px-6 py-8 sm:px-8 sm:py-10 rounded-3xl max-w-[280px] w-full"
+        style={{
+          filter: isRed ? 'drop-shadow(0 0 14px #ef4444aa)' : 'drop-shadow(0 0 14px #3b82f6aa)',
+          background: isRed
+            ? 'linear-gradient(135deg, #991b1b 0%, #ef4444 50%, #fca5a5 100%)'
+            : 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #93c5fd 100%)',
+          boxShadow: isRed
+            ? '0 0 22px #ef444480, 0 4px 14px #991b1b60, inset 0 2px 4px rgba(255,255,255,0.2)'
+            : '0 0 22px #3b82f680, 0 4px 14px #1d4ed860, inset 0 2px 4px rgba(255,255,255,0.2)',
+          border: isRed ? '1px solid #f87171' : '1px solid #60a5fa',
+        }}
+      >
+        <span
+          className="font-mono tracking-[0.2em] text-sm sm:text-base font-bold text-white"
+          style={{ textShadow: '0 0 10px rgba(255,255,255,0.5)' }}
+        >
+          {title}
+        </span>
+        <span className="text-center text-white/95 text-xs sm:text-sm leading-relaxed px-1">
+          <strong className="font-semibold block mb-1.5">{strong}</strong>
+          <span className="font-mono opacity-95">{children}</span>
+        </span>
+      </div>
+    </button>
+  );
+}
+
 export default function IntroScreen() {
   const [phase, setPhase] = useState('hello');
-  const [showCursor, setShowCursor] = useState(true);
   const navigate = useNavigate();
 
-  // Phase: hello — type "Hello" then wait 5s
-  const { displayed: helloText, done: helloDone } = useTypewriter('Hello.', 180, phase === 'hello');
+  const helloLine = 'Hello.';
+  const { displayed: helloText, done: helloDone } = useTypewriter(helloLine, 180, phase === 'hello');
 
   useEffect(() => {
     if (phase === 'hello' && helloDone) {
-      const t = setTimeout(() => setPhase('question'), 5000);
+      const t = setTimeout(() => setPhase('question'), 3000);
       return () => clearTimeout(t);
     }
   }, [phase, helloDone]);
 
-  // Phase: question — type question, then wait 4s after done, then go to rain
   const { displayed: questionText, done: questionDone } = useTypewriter(
-    'Have you ever felt that there\'s something strange about this world?',
+    "Have you ever felt that there's something strange about this world?",
     55,
     phase === 'question'
   );
 
   useEffect(() => {
     if (phase === 'question' && questionDone) {
-      const t = setTimeout(() => setPhase('rain'), 4000);
+      const t = setTimeout(() => setPhase('choice'), 5000);
       return () => clearTimeout(t);
     }
   }, [phase, questionDone]);
 
-  // Rain done → dashboard
-  const handleRainDone = useCallback(() => {
-    setPhase('dashboard');
-  }, []);
-
-  const handleExit = () => {
-    window.location.href = 'about:blank';
+  const handleRedPill = () => {
+    navigate('/protocol');
   };
 
-  const handleContinue = () => {
-    navigate('/home');
+  const handleBluePill = () => {
+    navigate('/blue');
   };
 
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* Ambient rain — only visible from rain phase onward */}
-      {(phase === 'rain' || phase === 'dashboard') && (
-        <MatrixRainBg intensity={1} speed={0.9} />
-      )}
+      {/* Live digital rain for pill choice — stays running behind the UI */}
+      {phase === 'choice' && <MatrixRainBg intensity={1} speed={0.9} />}
 
-      {/* Intense rain transition layer */}
-      <AnimatePresence>
-        {phase === 'rain' && (
-          <motion.div
-            key="intense-rain"
-            className="fixed inset-0"
-            style={{ zIndex: 10 }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <IntenseRainTransition onComplete={handleRainDone} duration={3500} />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Content layer */}
       <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
-
-        {/* PHASE: Hello */}
         <AnimatePresence>
           {phase === 'hello' && (
             <motion.div
@@ -138,7 +142,6 @@ export default function IntroScreen() {
           )}
         </AnimatePresence>
 
-        {/* PHASE: Question */}
         <AnimatePresence>
           {phase === 'question' && (
             <motion.div
@@ -147,7 +150,7 @@ export default function IntroScreen() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.4 }}
             >
               <p
                 className="font-mono leading-relaxed"
@@ -178,181 +181,84 @@ export default function IntroScreen() {
           )}
         </AnimatePresence>
 
-        {/* PHASE: Dashboard */}
         <AnimatePresence>
-          {phase === 'dashboard' && (
+          {phase === 'choice' && (
             <motion.div
-              key="dashboard"
-              className="text-center max-w-3xl px-6 sm:px-10"
+              key="choice"
+              className="text-center max-w-4xl px-6 sm:px-10 relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 1.2 }}
+              transition={{ duration: 0.9 }}
             >
-              {/* Glitch line accent */}
+              {/* Readability over rain */}
+              <div
+                className="absolute inset-0 -z-10 rounded-3xl opacity-40 pointer-events-none"
+                style={{
+                  background:
+                    'radial-gradient(ellipse 80% 70% at 50% 40%, rgba(0,20,0,0.75) 0%, rgba(0,0,0,0.5) 55%, transparent 75%)',
+                }}
+                aria-hidden
+              />
+
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ duration: 0.8, delay: 0.3 }}
-                className="h-px mb-8 mx-auto"
-                style={{ background: 'linear-gradient(90deg, transparent, #00ff41, transparent)', maxWidth: '300px' }}
+                transition={{ duration: 0.8, delay: 0.15 }}
+                className="h-px mb-6 mx-auto"
+                style={{
+                  background: 'linear-gradient(90deg, transparent, #00ff41, transparent)',
+                  maxWidth: '320px',
+                }}
               />
 
+              <p className="font-mono text-xs sm:text-sm text-primary/90 tracking-widest mb-4 drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+                [ STOIX // PROTOCOL SELECTION ]
+              </p>
+
               <motion.h1
-                initial={{ opacity: 0, y: 10 }}
+                initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.8 }}
-                className="font-mono mb-4"
-                style={{
-                  fontSize: 'clamp(1.4rem, 4vw, 2.6rem)',
-                  color: '#00ff41',
-                  textShadow: '0 0 16px #00ff41aa, 0 0 40px #00ff4155',
-                  letterSpacing: '0.06em',
-                }}
+                transition={{ delay: 0.25, duration: 0.7 }}
+                className="font-mono text-xl sm:text-3xl text-glow mb-4 leading-snug drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)]"
               >
-                THE MATRIX PLANNER
+                Which side are you on?
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.8 }}
-                className="font-mono mb-3"
-                style={{
-                  fontSize: 'clamp(0.85rem, 2vw, 1.05rem)',
-                  color: 'rgba(0,255,65,0.65)',
-                  letterSpacing: '0.03em',
-                  lineHeight: '1.8',
-                }}
+                transition={{ delay: 0.45, duration: 0.7 }}
+                className="font-mono text-sm text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]"
+                style={{ color: 'rgba(200,255,210,0.88)' }}
               >
-                You have a goal. A destination. Something you want to become.
-              </motion.p>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2, duration: 0.8 }}
-                className="font-mono mb-3"
-                style={{
-                  fontSize: 'clamp(0.85rem, 2vw, 1.05rem)',
-                  color: 'rgba(0,255,65,0.65)',
-                  letterSpacing: '0.03em',
-                  lineHeight: '1.8',
-                }}
-              >
-                We use AI to break that goal into a sequence of invisible micro-tasks —<br />
-                each one so small you will barely notice it.
-              </motion.p>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.6, duration: 0.8 }}
-                className="font-mono mb-12"
-                style={{
-                  fontSize: 'clamp(0.85rem, 2vw, 1.05rem)',
-                  color: 'rgba(0,255,65,0.5)',
-                  letterSpacing: '0.03em',
-                  lineHeight: '1.8',
-                }}
-              >
-                But together, they will bend reality to your will.
+                Two paths diverge. One demands discipline. The other offers exploration.
+                <br />
+                Choose with care — the path shapes the protocol.
               </motion.p>
 
               <motion.div
-                className="h-px mb-12 mx-auto"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.8, delay: 1.8 }}
-                style={{ background: 'linear-gradient(90deg, transparent, #00ff4155, transparent)', maxWidth: '300px' }}
-              />
-
-              {/* Pills */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 2.2, duration: 0.8 }}
-                className="flex items-center justify-center gap-8 sm:gap-16"
+                transition={{ delay: 0.6, duration: 0.7 }}
+                className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-14 mb-10"
               >
-                {/* Blue pill — Exit */}
-                <button
-                  onClick={handleExit}
-                  className="group cursor-pointer transition-all duration-300 hover:scale-110"
-                  style={{ filter: 'drop-shadow(0 0 12px #3b82f6aa)' }}
-                >
-                  <div
-                    style={{
-                      width: '130px',
-                      height: '50px',
-                      borderRadius: '25px',
-                      background: 'linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #93c5fd 100%)',
-                      boxShadow: '0 0 20px #3b82f680, 0 4px 12px #1d4ed860, inset 0 2px 4px rgba(255,255,255,0.25)',
-                      border: '1px solid #60a5fa',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'relative',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '8px',
-                        left: '16px',
-                        width: '36px',
-                        height: '8px',
-                        borderRadius: '4px',
-                        background: 'rgba(255,255,255,0.3)',
-                      }}
-                    />
-                    <span
-                      className="font-mono tracking-widest uppercase text-sm font-bold"
-                      style={{ color: '#ffffff', textShadow: '0 0 8px rgba(255,255,255,0.6)', position: 'relative', zIndex: 1 }}
-                    >
-                      Exit
-                    </span>
-                  </div>
-                </button>
-
-                {/* Red pill — Continue */}
-                <button
-                  onClick={handleContinue}
-                  className="group cursor-pointer transition-all duration-300 hover:scale-110"
-                  style={{ filter: 'drop-shadow(0 0 12px #ef4444aa)' }}
-                >
-                  <div
-                    style={{
-                      width: '130px',
-                      height: '50px',
-                      borderRadius: '25px',
-                      background: 'linear-gradient(135deg, #991b1b 0%, #ef4444 50%, #fca5a5 100%)',
-                      boxShadow: '0 0 20px #ef444480, 0 4px 12px #991b1b60, inset 0 2px 4px rgba(255,255,255,0.25)',
-                      border: '1px solid #f87171',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'relative',
-                    }}
-                  >
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '8px',
-                        left: '16px',
-                        width: '36px',
-                        height: '8px',
-                        borderRadius: '4px',
-                        background: 'rgba(255,255,255,0.3)',
-                      }}
-                    />
-                    <span
-                      className="font-mono tracking-widest uppercase text-sm font-bold"
-                      style={{ color: '#ffffff', textShadow: '0 0 8px rgba(255,255,255,0.6)', position: 'relative', zIndex: 1 }}
-                    >
-                      Continue
-                    </span>
-                  </div>
-                </button>
+                <PillButton tone="red" title="RED PILL" strong="Discipline." onClick={handleRedPill}>
+                  Structured protocol toward a specific goal.
+                </PillButton>
+                <PillButton tone="blue" title="BLUE PILL" strong="Exploration." onClick={handleBluePill}>
+                  Side quests, skill learning, real-world discovery.
+                </PillButton>
               </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="font-mono text-xs max-w-md mx-auto drop-shadow-[0_1px_8px_rgba(0,0,0,0.95)]"
+                style={{ color: 'rgba(180,255,190,0.75)' }}
+              >
+                Your decision is not final. You can return and choose again at any time.
+              </motion.p>
             </motion.div>
           )}
         </AnimatePresence>

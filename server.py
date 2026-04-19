@@ -31,6 +31,88 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+# Base44 (Vite) React UI — `npm run build` in `cordial-matrix-logic-lab-2 4/`
+FRONTEND_DIST = (ROOT / "cordial-matrix-logic-lab-2 4" / "dist").resolve()
+
+STATIC_SUFFIXES = frozenset(
+    {
+        ".js",
+        ".css",
+        ".map",
+        ".ico",
+        ".svg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".webp",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".json",
+        ".webmanifest",
+        ".txt",
+    }
+)
+
+
+def _is_probable_asset_request(rel: str) -> bool:
+    """Paths that should 404 if missing (do not SPA-fallback to index.html)."""
+    if not rel:
+        return False
+    p = Path(rel)
+    suf = p.suffix.lower()
+    if suf in STATIC_SUFFIXES:
+        return True
+    return bool(p.parts) and p.parts[0] == "assets"
+
+
+def _send_static_file(handler: BaseHTTPRequestHandler, file_path: Path) -> None:
+    mime, _ = mimetypes.guess_type(str(file_path))
+    data = file_path.read_bytes()
+    handler.send_response(200)
+    handler.send_header("Content-Type", mime or "application/octet-stream")
+    handler.send_header("Cache-Control", "no-store")
+    handler.send_header("Content-Length", str(len(data)))
+    handler.end_headers()
+    handler.wfile.write(data)
+
+
+def _serve_built_frontend(handler: BaseHTTPRequestHandler, url_path: str) -> bool:
+    """
+    Serve the Vite production build (Base44 template UI) when dist/ exists.
+    Returns True if the response was fully handled (including 403/404).
+    Returns False if dist is not available (caller may fall back to legacy static).
+    """
+    if not FRONTEND_DIST.is_dir():
+        return False
+    index_file = FRONTEND_DIST / "index.html"
+    if not index_file.is_file():
+        return False
+
+    rel = url_path.strip("/")
+
+    if not rel:
+        _send_static_file(handler, index_file)
+        return True
+
+    candidate = (FRONTEND_DIST / rel).resolve()
+    try:
+        candidate.relative_to(FRONTEND_DIST)
+    except ValueError:
+        handler.send_error(403, "Forbidden")
+        return True
+
+    if candidate.is_file():
+        _send_static_file(handler, candidate)
+        return True
+
+    if _is_probable_asset_request(rel):
+        handler.send_error(404, "Not found")
+        return True
+
+    _send_static_file(handler, index_file)
+    return True
 
 
 # ---------- Load .env ----------
@@ -582,8 +664,17 @@ class Handler(BaseHTTPRequestHandler):
                     "provider": "gemini",
                 },
             )
-        # Static file serving
+
         url_path = self.path.split("?", 1)[0]
+        if url_path.startswith("/api/"):
+            self.send_error(404, "Not found")
+            return
+
+        # Base44 (Vite) React app over STOIX — same origin as /api/*
+        if _serve_built_frontend(self, url_path):
+            return
+
+        # Legacy static files at repo root (vanilla index.html, redpill.js, …)
         if url_path == "/":
             url_path = "/index.html"
         file_path = (ROOT / url_path.lstrip("/")).resolve()
@@ -702,6 +793,13 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"\nSTOIX // Red Pill server running at http://localhost:{PORT}")
+    if (FRONTEND_DIST / "index.html").is_file():
+        print(f"UI: Base44 (Vite) app from {FRONTEND_DIST.relative_to(ROOT)}")
+    else:
+        print(
+            "UI: legacy static files only — run: "
+            'cd "cordial-matrix-logic-lab-2 4" && npm install && npm run build'
+        )
     print(f"Provider: Google Gemini  Model: {MODEL}")
     if not GEMINI_API_KEY:
         print("WARNING: GEMINI_API_KEY not set. Add it to .env to enable AI tasks.")

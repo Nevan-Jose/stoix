@@ -1,12 +1,14 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import IntroScreen from './pages/IntroScreen';
-import Home from './pages/Home';
+import Protocol from './pages/Protocol';
+import BluePill from './pages/BluePill';
+// Home.jsx (The Matrix Planner) deleted — replaced by Protocol.jsx wired to Python backend
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -31,7 +33,8 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route path="/" element={<IntroScreen />} />
-      <Route path="/home" element={<Home />} />
+      <Route path="/protocol" element={<Protocol />} />
+      <Route path="/blue" element={<BluePill />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

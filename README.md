@@ -15,14 +15,26 @@ fits the user's daily minute budget.
 
 2. **Your API key is already in `.env`.** If you want to change it, edit that file.
 
-3. **Run the server:**
+3. **Build the Base44 (Vite) UI** (needed whenever you change the React app; produces `cordial-matrix-logic-lab-2 4/dist/`):
    ```bash
+   cd "cordial-matrix-logic-lab-2 4"
+   npm install
+   npm run build
+   ```
+
+4. **Run the server** — Python serves the **React app at `/`** and the **Gemini API** on the same port (`/api/*`):
+   ```bash
+   cd ..   # back to repo root if you were in cordial-matrix-logic-lab-2 4
    python3 server.py
    ```
 
-4. **Open** http://localhost:8787 in your browser.
+5. **Open** http://localhost:8787 in your browser (intro → pill choice → `/protocol` for the red-pill flow; `fetch("/api/generate-tasks")` is same-origin).
 
-Press `Ctrl+C` in the terminal to stop.
+**Optional — Vite dev server** (hot reload; proxies `/api` to Python on 8787): run `python3 server.py` in one terminal and `npm run dev` in `cordial-matrix-logic-lab-2 4/` in another, then open the URL Vite prints (e.g. http://localhost:5173).
+
+With `VITE_BASE44_APP_ID` unset, the app skips Base44 cloud auth and uses the local STOIX API only. To use Base44 hosting again, set `VITE_BASE44_APP_ID` (and related vars) in `cordial-matrix-logic-lab-2 4/.env.local` and set `VITE_STOIX_LOCAL=false`.
+
+Press `Ctrl+C` in the terminal to stop `server.py`.
 
 ## How the AI pipeline works
 
@@ -47,10 +59,9 @@ so the user always gets something usable.
 
 ## Files
 
-- `index.html`, `styles.css` — UI
-- `matrix.js` — water-smooth Matrix digital rain
-- `redpill.js` — flow logic, AI fetch, fallback generator, .ics export
-- `server.py` — Python stdlib HTTP server + Gemini pipeline
+- `cordial-matrix-logic-lab-2 4/` — Base44 (Vite + React) UI; `npm run build` writes `dist/`, which `server.py` serves at `/`
+- `index.html`, `styles.css`, `redpill.js`, `matrix.js` — legacy vanilla UI (still in repo; not used at `/` once `dist/` exists)
+- `server.py` — Python stdlib HTTP server + Gemini pipeline + static SPA from `dist/`
 - `.env` — API key (gitignored)
 
 ## Notes
