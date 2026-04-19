@@ -147,7 +147,7 @@ export default function Protocol() {
             </Button>
             <div className="min-w-0">
               <h1 className="font-mono text-xl sm:text-2xl text-glow-strong tracking-widest">
-                STOIX // RED PILL
+                STOIX
               </h1>
               <p className="font-mono text-xs text-primary/70 mt-1 tracking-wider">
                 Evidence-style protocol — cloud open models (OpenRouter) or Ollama + daily micro-tasks.

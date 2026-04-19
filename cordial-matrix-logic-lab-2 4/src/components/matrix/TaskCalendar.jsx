@@ -85,7 +85,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//STOIX//Red Pill//EN',
+      'PRODID:-//STOIX//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];

@@ -472,7 +472,7 @@ export default function BluePill() {
               className="font-mono text-xl sm:text-2xl tracking-widest"
               style={{ color: '#60a5fa', textShadow: '0 0 14px #3b82f666' }}
             >
-              STOIX // BLUE PILL
+              STOIX
             </h1>
             <p className="font-mono text-xs text-sky-300/90 mt-0.5 tracking-wider">
               Side quests &amp; skill learning — curated for your time and place.
