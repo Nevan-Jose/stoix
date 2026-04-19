@@ -5,6 +5,7 @@ import GoalForm from '../components/matrix/GoalForm';
 import TaskCalendar from '../components/matrix/TaskCalendar';
 import { format, startOfDay } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
+import { stoixApiUrl } from '@/lib/stoix-api';
 
 // Map the backend task objects to the shape TaskCalendar expects.
 // Keeps fields as structured props rather than concatenating into description.
@@ -31,8 +32,8 @@ export default function Protocol() {
   const [startDate, setStartDate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // onSubmit receives { goal, days, dailyMinutes, calendar } from GoalForm
-  const generateTasks = async ({ goal, days, dailyMinutes, calendar }) => {
+  // onSubmit receives { goal, days, dailyMinutes, calendar, startTime } from GoalForm
+  const generateTasks = async ({ goal, days, dailyMinutes, calendar, startTime }) => {
     setIsLoading(true);
     setGoalText(goal);
 
@@ -41,14 +42,14 @@ export default function Protocol() {
     setStartDate(day0.getTime());
 
     try {
-      const resp = await fetch('/api/generate-tasks', {
+      const resp = await fetch(stoixApiUrl('/api/generate-tasks'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           goal,
           days,
           dailyMinutes,
-          startTime: '09:00',
+          startTime: startTime || '09:00',
           startDate: startDateStr,
           calendar:  calendar || { type: 'none' },
         }),
@@ -71,10 +72,18 @@ export default function Protocol() {
         toast({
           variant:     'destructive',
           title:       'No tasks generated',
-          description: data?.error || 'The AI returned no usable tasks. Check your API key and try again.',
+          description: data?.error || 'The server returned no usable tasks. Try again.',
         });
         setIsLoading(false);
         return;
+      }
+
+      if (data.source === 'offline') {
+        toast({
+          title:       'Offline protocol',
+          description:
+            'Cloud/local LLM unavailable or the request failed. You still get a full offline task ladder you can run and export.',
+        });
       }
 
       setTasks(mapApiTasks(data.tasks, dailyMinutes));
@@ -97,7 +106,7 @@ export default function Protocol() {
 
   return (
     <div className="min-h-screen bg-background relative scanline-overlay">
-      <MatrixRainBg intensity={0.5} speed={0.4} />
+      <MatrixRainBg intensity={1.08} speed={0.78} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
         <motion.header
@@ -110,7 +119,7 @@ export default function Protocol() {
             STOIX // RED PILL
           </h1>
           <p className="font-mono text-xs text-muted-foreground mt-1 tracking-wider">
-            Evidence-based protocol — Gemini research + daily micro-tasks.
+            Evidence-style protocol — cloud open models (OpenRouter) or Ollama + daily micro-tasks.
           </p>
         </motion.header>
 

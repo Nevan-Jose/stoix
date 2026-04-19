@@ -66,16 +66,6 @@
         </p>
 
         <div class="pill-stage">
-          <button class="pill pill-red" id="pill-red" aria-label="Choose the Red Pill">
-            <span class="pill-body">
-              <span class="pill-label">RED PILL</span>
-            </span>
-            <span class="pill-caption">
-              <strong>Discipline.</strong>
-              <span>Structured protocol toward a specific goal.</span>
-            </span>
-          </button>
-
           <button class="pill pill-blue" id="pill-blue" aria-label="Choose the Blue Pill">
             <span class="pill-body">
               <span class="pill-label">BLUE PILL</span>
@@ -83,6 +73,16 @@
             <span class="pill-caption">
               <strong>Exploration.</strong>
               <span>Side quests, skill learning, real-world discovery.</span>
+            </span>
+          </button>
+
+          <button class="pill pill-red" id="pill-red" aria-label="Choose the Red Pill">
+            <span class="pill-body">
+              <span class="pill-label">RED PILL</span>
+            </span>
+            <span class="pill-caption">
+              <strong>Discipline.</strong>
+              <span>Structured protocol toward a specific goal.</span>
             </span>
           </button>
         </div>
@@ -338,9 +338,9 @@
           <p class="hint">Common fixes:</p>
           <ul class="tip-list">
             <li>Check that the Python server is running (terminal should show <code>STOIX // Red Pill server running</code>)</li>
-            <li>Verify your <code>.env</code> file contains a valid <code>GEMINI_API_KEY</code></li>
-            <li>Google's API may be temporarily overloaded — retrying usually works</li>
-            <li>Check your internet connection</li>
+            <li>Set <code>OPENROUTER_API_KEY</code> in <code>.env</code> from <a href="https://openrouter.ai" target="_blank" rel="noopener">OpenRouter</a>, or run local <a href="https://ollama.com" target="_blank" rel="noopener">Ollama</a> with no cloud key</li>
+            <li>Confirm the model IDs in <code>.env</code> match models you can access on OpenRouter</li>
+            <li>Long plans can take several minutes — retry if the request timed out</li>
           </ul>
         </div>
 

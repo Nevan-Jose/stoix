@@ -260,7 +260,7 @@
     state.endDate = p.endDate ? new Date(p.endDate) : null;
     state.dailyMinutes = p.dailyMinutes || 30;
     state.startTime = p.startTime || "09:00";
-    state.source = p.source || "ai";
+    state.source = p.source || "local";
     state.research = p.research || "";
     state.decomposition = p.decomposition || null;
     state.tasks = (p.tasks || []).map((t) => ({
@@ -626,11 +626,11 @@
         errorCode = "NO_TASKS";
         errorMessage =
           data.error ||
-          "The AI returned a response but no usable tasks were produced.";
+          "The server returned a response but no usable tasks were produced.";
         return showPipelineError(errorCode, errorMessage);
       }
 
-      // Success — real AI-generated, research-backed tasks
+      // Success — AI-backed or server offline ladder
       state.tasks = buildTasksFromAI(
         data.tasks,
         state.startDate,
@@ -640,7 +640,12 @@
       state.research = data.research || "";
       state.decomposition =
         (data.tasks[0] && data.tasks[0]._decomposition) || null;
-      state.source = "ai";
+      state.source =
+        data.source === "offline"
+          ? "offline"
+          : data.source === "cloud"
+            ? "cloud"
+            : "local";
 
       completePipeline();
       // Let the final ✓ breathe for a moment before transitioning
@@ -839,9 +844,11 @@
   // ---------- Render schedule (top-level) ----------
   function renderSchedule() {
     const sourceBadge =
-      state.source === "ai"
-        ? '  ·  <span class="source-badge ai">AI-researched</span>'
-        : '  ·  <span class="source-badge offline">Offline template</span>';
+      state.source === "offline"
+        ? '  ·  <span class="source-badge offline">Offline template</span>'
+        : state.source === "cloud"
+          ? '  ·  <span class="source-badge ai">Cloud model (OpenRouter)</span>'
+          : '  ·  <span class="source-badge ai">Local model (Ollama)</span>';
     document.getElementById("schedule-summary").innerHTML =
       `${state.tasks.length} tasks · ${state.dailyMinutes} min/day · ${escapeHTML(
         formatDate(state.startDate)

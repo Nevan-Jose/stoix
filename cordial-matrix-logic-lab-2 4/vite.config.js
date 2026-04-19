@@ -1,28 +1,38 @@
 import base44 from "@base44/vite-plugin"
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 
 // https://vite.dev/config/
-export default defineConfig({
-  logLevel: 'error', // Suppress warnings, only show errors
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:8787',
-        changeOrigin: true,
-      },
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const stoixTarget =
+    (env.VITE_STOIX_API_ORIGIN || '').trim() ||
+    `http://127.0.0.1:${env.STOIX_PORT || env.VITE_STOIX_PORT || '8787'}`
+
+  const apiProxy = {
+    '/api': {
+      target: stoixTarget,
+      changeOrigin: true,
     },
-  },
-  plugins: [
-    base44({
-      // Support for legacy code that imports the base44 SDK with @/integrations, @/entities, etc.
-      // can be removed if the code has been updated to use the new SDK imports from @base44/sdk
-      legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
-      hmrNotifier: true,
-      navigationNotifier: true,
-      analyticsTracker: true,
-      visualEditAgent: true
-    }),
-    react(),
-  ]
-});
+  }
+
+  return {
+    logLevel: 'error',
+    server: {
+      proxy: apiProxy,
+    },
+    preview: {
+      proxy: apiProxy,
+    },
+    plugins: [
+      base44({
+        legacySDKImports: process.env.BASE44_LEGACY_SDK_IMPORTS === 'true',
+        hmrNotifier: true,
+        navigationNotifier: true,
+        analyticsTracker: true,
+        visualEditAgent: true
+      }),
+      react(),
+    ],
+  }
+})

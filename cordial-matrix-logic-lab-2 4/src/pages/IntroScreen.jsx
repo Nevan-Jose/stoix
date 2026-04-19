@@ -4,9 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
 
 // Phases:
-// 'hello'     — type greeting (DEV: "gay"; prod: "Hello."), hold 3s → question
-// 'question'  — type question, hold 5s → choice (live rain + pill UI)
-// 'choice'    — MatrixRainBg + "Which side are you on?" (red / blue pill)
+// 'hello'       — type "Hello.", hold 3s → question
+// 'question'    — type second sentence, hold 5s → transition
+// 'transition'  — slow ramp: digital rain fades in and strengthens → persistent background
+// 'choice'      — same live rain + pill UI
+
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+}
 
 function useTypewriter(text, charDelay, startTyping) {
   const [displayed, setDisplayed] = useState('');
@@ -66,8 +71,17 @@ function PillButton({ tone, title, strong, children, onClick }) {
   );
 }
 
+const TRANSITION_MS = 7200;
+const RAIN_FINAL_INTENSITY = 1.38;
+const RAIN_FINAL_SPEED = 1.08;
+const RAIN_START_INTENSITY = 0.04;
+const RAIN_START_SPEED = 0.22;
+
 export default function IntroScreen() {
   const [phase, setPhase] = useState('hello');
+  const [rainIntensity, setRainIntensity] = useState(RAIN_FINAL_INTENSITY);
+  const [rainSpeed, setRainSpeed] = useState(RAIN_FINAL_SPEED);
+  const [rainOverlayOpacity, setRainOverlayOpacity] = useState(0);
   const navigate = useNavigate();
 
   const helloLine = 'Hello.';
@@ -88,10 +102,42 @@ export default function IntroScreen() {
 
   useEffect(() => {
     if (phase === 'question' && questionDone) {
-      const t = setTimeout(() => setPhase('choice'), 5000);
+      const t = setTimeout(() => {
+        setRainIntensity(RAIN_START_INTENSITY);
+        setRainSpeed(RAIN_START_SPEED);
+        setRainOverlayOpacity(0);
+        setPhase('transition');
+      }, 5000);
       return () => clearTimeout(t);
     }
   }, [phase, questionDone]);
+
+  useEffect(() => {
+    if (phase !== 'transition') return;
+
+    const t0 = performance.now();
+    let raf = 0;
+
+    const tick = (now) => {
+      const u = Math.min(1, (now - t0) / TRANSITION_MS);
+      const e = easeInOutCubic(u);
+      setRainIntensity(RAIN_START_INTENSITY + (RAIN_FINAL_INTENSITY - RAIN_START_INTENSITY) * e);
+      setRainSpeed(RAIN_START_SPEED + (RAIN_FINAL_SPEED - RAIN_START_SPEED) * e);
+      setRainOverlayOpacity(e);
+
+      if (u >= 1) {
+        setRainIntensity(RAIN_FINAL_INTENSITY);
+        setRainSpeed(RAIN_FINAL_SPEED);
+        setRainOverlayOpacity(1);
+        setPhase('choice');
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [phase]);
 
   const handleRedPill = () => {
     navigate('/protocol');
@@ -101,10 +147,22 @@ export default function IntroScreen() {
     navigate('/blue');
   };
 
+  const showRain = phase === 'transition' || phase === 'choice';
+
   return (
     <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* Live digital rain for pill choice — stays running behind the UI */}
-      {phase === 'choice' && <MatrixRainBg intensity={1} speed={0.9} />}
+      {showRain && (
+        <div
+          className="fixed inset-0 pointer-events-none"
+          style={{
+            zIndex: 0,
+            opacity: phase === 'transition' ? 0.15 + 0.85 * rainOverlayOpacity : 1,
+            transition: phase === 'choice' ? 'opacity 0.8s ease-out' : undefined,
+          }}
+        >
+          <MatrixRainBg intensity={rainIntensity} speed={rainSpeed} />
+        </div>
+      )}
 
       <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
         <AnimatePresence>
@@ -150,7 +208,7 @@ export default function IntroScreen() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4 }}
+              transition={{ duration: 0.5 }}
             >
               <p
                 className="font-mono leading-relaxed"
@@ -188,9 +246,8 @@ export default function IntroScreen() {
               className="text-center max-w-4xl px-6 sm:px-10 relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ duration: 0.9 }}
+              transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
             >
-              {/* Readability over rain */}
               <div
                 className="absolute inset-0 -z-10 rounded-3xl opacity-40 pointer-events-none"
                 style={{
@@ -203,7 +260,7 @@ export default function IntroScreen() {
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                transition={{ duration: 0.8, delay: 0.15 }}
+                transition={{ duration: 0.85, delay: 0.1 }}
                 className="h-px mb-6 mx-auto"
                 style={{
                   background: 'linear-gradient(90deg, transparent, #00ff41, transparent)',
@@ -218,7 +275,7 @@ export default function IntroScreen() {
               <motion.h1
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.7 }}
+                transition={{ delay: 0.2, duration: 0.75 }}
                 className="font-mono text-xl sm:text-3xl text-glow mb-4 leading-snug drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)]"
               >
                 Which side are you on?
@@ -227,7 +284,7 @@ export default function IntroScreen() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.45, duration: 0.7 }}
+                transition={{ delay: 0.4, duration: 0.75 }}
                 className="font-mono text-sm text-muted-foreground mb-10 max-w-xl mx-auto leading-relaxed drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]"
                 style={{ color: 'rgba(200,255,210,0.88)' }}
               >
@@ -239,21 +296,21 @@ export default function IntroScreen() {
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6, duration: 0.7 }}
+                transition={{ delay: 0.55, duration: 0.75 }}
                 className="flex flex-col sm:flex-row items-center justify-center gap-10 sm:gap-14 mb-10"
               >
-                <PillButton tone="red" title="RED PILL" strong="Discipline." onClick={handleRedPill}>
-                  Structured protocol toward a specific goal.
-                </PillButton>
                 <PillButton tone="blue" title="BLUE PILL" strong="Exploration." onClick={handleBluePill}>
                   Side quests, skill learning, real-world discovery.
+                </PillButton>
+                <PillButton tone="red" title="RED PILL" strong="Discipline." onClick={handleRedPill}>
+                  Structured protocol toward a specific goal.
                 </PillButton>
               </motion.div>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.6 }}
+                transition={{ delay: 0.75, duration: 0.65 }}
                 className="font-mono text-xs max-w-md mx-auto drop-shadow-[0_1px_8px_rgba(0,0,0,0.95)]"
                 style={{ color: 'rgba(180,255,190,0.75)' }}
               >

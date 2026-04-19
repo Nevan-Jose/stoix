@@ -4,26 +4,24 @@ STOIX // Red Pill — local Python backend (stdlib only, no pip needed).
 
 Pipeline for /api/generate-tasks:
 
-  PASS 1 (RESEARCH) — Gemini with Google Search grounding
-      Gather evidence-based practices, proven methods, common mistakes,
-      and real-world techniques for the user's specific goal.
+  PASS 1 (RESEARCH) — cloud chat model (OpenRouter by default)
+      Synthesize evidence-style practices, mistakes, and milestones.
+      Optional: set OPENROUTER_API_KEY; otherwise falls back to local Ollama
+      if `ollama serve` is running.
 
-  PASS 2 (DECOMPOSITION + DAILY MINI-TASKS) — Gemini JSON output
-      Using Pass 1 as context, decompose the goal into:
-        - Foundational prerequisites
-        - Intermediate milestones
-        - Final execution outcome
-      Then generate exactly N concrete, sequenced, daily micro-tasks
-      that each fit within the user's daily minute budget.
+  PASS 2 (DECOMPOSITION + DAILY MINI-TASKS) — JSON mode from the same backend
 
-If either pass fails, the endpoint returns ok=False and the frontend
-silently falls back to its rule-based template plan.
+If no cloud key and Ollama is unreachable (or generation fails), the endpoint
+returns HTTP 200 with ok=True and a deterministic offline task ladder
+(source="offline").
 """
 
 import json
 import os
 import re
 import sys
+import time
+from typing import Optional
 import mimetypes
 import urllib.request
 import urllib.error
@@ -135,31 +133,57 @@ def load_env():
 load_env()
 
 PORT = int(os.environ.get("PORT", "8787"))
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
-# Gemini 2.5 Flash is fast + supports google_search grounding.
-# You can override via .env if you want Pro for higher quality.
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
 
+
+def _model_chain(primary: str, fallbacks_csv: str) -> list:
+    out = []
+    if primary:
+        out.append(primary)
+    for part in (fallbacks_csv or "").split(","):
+        p = part.strip()
+        if p and p not in out:
+            out.append(p)
+    return out
+
+
+# Cloud — OpenRouter (OpenAI-compatible API): https://openrouter.ai
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_BASE_URL = os.environ.get(
+    "OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"
+).rstrip("/")
+OPENROUTER_MODEL = os.environ.get(
+    "OPENROUTER_MODEL", "qwen/qwen2.5-72b-instruct"
+).strip()
+OPENROUTER_MODEL_FALLBACKS = os.environ.get(
+    "OPENROUTER_MODEL_FALLBACKS",
+    "meta-llama/llama-3.3-70b-instruct,mistralai/mistral-7b-instruct",
+).strip()
+OPENROUTER_VISION_MODEL = os.environ.get(
+    "OPENROUTER_VISION_MODEL", "qwen/qwen2-vl-7b-instruct"
+).strip()
+OPENROUTER_VISION_FALLBACKS = os.environ.get("OPENROUTER_VISION_FALLBACKS", "").strip()
+OPENROUTER_TIMEOUT_RESEARCH = int(os.environ.get("OPENROUTER_TIMEOUT_RESEARCH", "180"))
+OPENROUTER_TIMEOUT_PLAN = int(os.environ.get("OPENROUTER_TIMEOUT_PLAN", "600"))
+OPENROUTER_TIMEOUT_VISION = int(os.environ.get("OPENROUTER_TIMEOUT_VISION", "180"))
+OPENROUTER_MAX_TOKENS = int(os.environ.get("OPENROUTER_MAX_TOKENS", "16384"))
+
+OPENROUTER_MODEL_CHAIN = _model_chain(OPENROUTER_MODEL, OPENROUTER_MODEL_FALLBACKS)
+if not OPENROUTER_MODEL_CHAIN:
+    OPENROUTER_MODEL_CHAIN = ["qwen/qwen2.5-72b-instruct"]
+OPENROUTER_VISION_CHAIN = _model_chain(
+    OPENROUTER_VISION_MODEL, OPENROUTER_VISION_FALLBACKS
+)
+
+# Blue Pill (/api/blue-pill, /api/skill-path) — Google Gemini (separate from Red Pill).
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "").strip()
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     "{model}:generateContent?key={key}"
 )
 
 
-# Models tried in order. If the primary is overloaded (503) or rate-limited
-# (429), we automatically fall through to the next one. gemini-2.0-flash is
-# a stable backup that supports google_search grounding.
-FALLBACK_MODELS = [
-    MODEL,
-    "gemini-2.0-flash",
-    "gemini-2.5-pro",
-]
-
-# HTTP status codes worth retrying (transient service issues)
-RETRYABLE_STATUS = {429, 500, 502, 503, 504}
-
-
-def _post_gemini(model: str, body: dict, timeout: int = 120) -> dict:
+def _post_gemini_generate(model: str, body: dict, timeout: int = 120) -> dict:
     url = GEMINI_URL.format(model=model, key=GEMINI_API_KEY)
     req = urllib.request.Request(
         url,
@@ -171,27 +195,27 @@ def _post_gemini(model: str, body: dict, timeout: int = 120) -> dict:
         return json.loads(resp.read().decode("utf-8"))
 
 
-# ---------- Gemini helper ----------
-def call_gemini(prompt, *, grounding=False, want_json=False, images=None):
-    """
-    Calls Gemini REST API with automatic retry + model fallback.
+def _extract_gemini_text(data: dict) -> str:
+    candidates = data.get("candidates") or []
+    if not candidates:
+        raise RuntimeError(f"Gemini returned no candidates: {json.dumps(data)[:400]}")
+    parts = candidates[0].get("content", {}).get("parts", [])
+    text_out = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+    if not text_out.strip():
+        raise RuntimeError("Gemini returned empty text.")
+    return text_out
 
-    - grounding=True enables google_search tool (real web research).
-    - want_json=True forces JSON output mode (no grounding tool — Gemini
-      cannot combine google_search with response_mime_type=application/json).
-    - images: optional list of {"mime": "image/png", "base64": "..."} dicts
-      for vision input (e.g. calendar screenshots).
 
-    Retry policy:
-      * Try each model in FALLBACK_MODELS in order.
-      * For each model, retry up to 3 times on transient 429/5xx errors
-        with exponential backoff (1s, 2s, 4s).
-      * If all models exhausted, raise the last error.
-    """
+def call_gemini(
+    prompt: str,
+    *,
+    grounding: bool = False,
+    want_json: bool = False,
+    images=None,
+) -> str:
+    """Blue Pill — Gemini REST. JSON mode cannot be combined with google_search."""
     if not GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY not set in .env")
-
-    # Build multi-modal content parts
     parts = [{"text": prompt}]
     for img in images or []:
         parts.append({
@@ -200,70 +224,329 @@ def call_gemini(prompt, *, grounding=False, want_json=False, images=None):
                 "data": img.get("base64", ""),
             }
         })
-
     body = {
         "contents": [{"role": "user", "parts": parts}],
         "generationConfig": {
             "temperature": 0.6,
-            "maxOutputTokens": 16384,
+            "maxOutputTokens": 8192,
         },
     }
     if want_json:
         body["generationConfig"]["responseMimeType"] = "application/json"
     if grounding:
         body["tools"] = [{"google_search": {}}]
+    data = _post_gemini_generate(GEMINI_MODEL, body, timeout=120)
+    return _extract_gemini_text(data)
 
-    import time
-    last_err = "no attempts"
 
-    for model in FALLBACK_MODELS:
+# Local fallback — Ollama (https://ollama.com)
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434").rstrip("/")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:7b").strip()
+OLLAMA_MODEL_FALLBACKS = os.environ.get(
+    "OLLAMA_MODEL_FALLBACKS", "llama3.2:latest,mistral:7b"
+).strip()
+
+_vraw = os.environ.get("OLLAMA_VISION_MODEL", "llava:latest").strip()
+OLLAMA_VISION_MODEL = _vraw
+OLLAMA_VISION_FALLBACKS = os.environ.get("OLLAMA_VISION_FALLBACKS", "").strip()
+
+OLLAMA_TIMEOUT_RESEARCH = int(os.environ.get("OLLAMA_TIMEOUT_RESEARCH", "300"))
+OLLAMA_TIMEOUT_PLAN = int(os.environ.get("OLLAMA_TIMEOUT_PLAN", "600"))
+OLLAMA_TIMEOUT_VISION = int(os.environ.get("OLLAMA_TIMEOUT_VISION", "300"))
+
+OLLAMA_MODEL_CHAIN = _model_chain(OLLAMA_MODEL, OLLAMA_MODEL_FALLBACKS) or ["qwen2.5:7b"]
+OLLAMA_VISION_CHAIN = (
+    _model_chain(OLLAMA_VISION_MODEL, OLLAMA_VISION_FALLBACKS)
+    if OLLAMA_VISION_MODEL
+    else []
+)
+
+
+def use_openrouter() -> bool:
+    return bool(OPENROUTER_API_KEY)
+
+
+def llm_ready() -> bool:
+    if use_openrouter():
+        return True
+    return ollama_reachable()
+
+
+def active_vision_chain() -> list:
+    if use_openrouter():
+        return OPENROUTER_VISION_CHAIN
+    return OLLAMA_VISION_CHAIN
+
+
+def ollama_reachable() -> bool:
+    try:
+        req = urllib.request.Request(f"{OLLAMA_HOST}/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def _post_ollama(path: str, payload: dict, timeout: int) -> dict:
+    url = f"{OLLAMA_HOST}{path}"
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _ollama_chat_once(
+    model: str,
+    prompt: str,
+    *,
+    want_json: bool,
+    images: Optional[list],
+    timeout: int,
+) -> str:
+    msg: dict = {"role": "user", "content": prompt}
+    if images:
+        b64s = [img.get("base64", "") for img in images if img.get("base64")]
+        if b64s:
+            msg["images"] = b64s
+    payload: dict = {
+        "model": model,
+        "messages": [msg],
+        "stream": False,
+        "options": {"temperature": 0.6},
+    }
+    if want_json:
+        payload["format"] = "json"
+    data = _post_ollama("/api/chat", payload, timeout=timeout)
+    content = (data.get("message") or {}).get("content")
+    if not content or not str(content).strip():
+        raise RuntimeError(f"Ollama returned empty content: {json.dumps(data)[:400]}")
+    return str(content).strip()
+
+
+def call_ollama(
+    prompt: str,
+    *,
+    want_json: bool = False,
+    images: Optional[list] = None,
+    timeout: int = 300,
+    model_chain: Optional[list] = None,
+    label: str = "chat",
+) -> str:
+    chain = list(model_chain or OLLAMA_MODEL_CHAIN)
+    if not chain:
+        raise RuntimeError("No Ollama models configured (OLLAMA_MODEL).")
+    last_err: Optional[BaseException] = None
+    for model in chain:
         for attempt in range(3):
             try:
-                data = _post_gemini(model, body)
-                if model != FALLBACK_MODELS[0] or attempt > 0:
+                text = _ollama_chat_once(
+                    model, prompt, want_json=want_json, images=images, timeout=timeout
+                )
+                if model != chain[0] or attempt > 0:
                     print(
-                        f"[gemini] succeeded with model={model} attempt={attempt + 1}",
+                        f"[ollama] {label} ok model={model} attempt={attempt + 1}",
                         flush=True,
                     )
-                return _extract_text(data)
+                return text
             except urllib.error.HTTPError as e:
-                err_body = e.read().decode("utf-8", errors="replace")
-                last_err = f"HTTP {e.code}: {err_body[:300]}"
-                transient = e.code in RETRYABLE_STATUS
-                if transient and attempt < 2:
-                    delay = 2 ** attempt  # 1s, 2s
-                    print(
-                        f"[gemini] {model} attempt {attempt + 1}: {e.code} — retry in {delay}s",
-                        flush=True,
-                    )
-                    time.sleep(delay)
-                    continue
-                # Non-retryable OR last attempt on this model — move on
+                err_body = ""
+                try:
+                    err_body = e.read().decode("utf-8", errors="replace")[:400]
+                except Exception:
+                    pass
+                last_err = RuntimeError(f"HTTP {e.code}: {err_body}")
                 print(
-                    f"[gemini] {model} gave up after attempt {attempt + 1} ({e.code}) — trying next model",
+                    f"[ollama] {label} model={model} HTTP {e.code} — try next model",
                     flush=True,
                 )
                 break
-            except urllib.error.URLError as e:
-                last_err = f"network: {e}"
+            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+                last_err = e
                 if attempt < 2:
-                    time.sleep(2 ** attempt)
+                    delay = 2**attempt
+                    print(
+                        f"[ollama] {label} model={model} attempt {attempt + 1}: {e} — retry in {delay}s",
+                        flush=True,
+                    )
+                    time.sleep(delay)
+                else:
+                    break
+            except RuntimeError as e:
+                last_err = e
+                print(f"[ollama] {label} model={model}: {e}", flush=True)
+                break
+    raise RuntimeError(f"Ollama failed ({label}): {last_err}")
+
+
+def _openrouter_user_content(prompt: str, images: Optional[list]):
+    if not images:
+        return prompt
+    parts: list = [{"type": "text", "text": prompt}]
+    for img in images:
+        mime = (img.get("mime") or "image/png").split(";")[0].strip()
+        b64 = img.get("base64", "")
+        if b64:
+            parts.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{mime};base64,{b64}"},
+                }
+            )
+    return parts
+
+
+def _post_openrouter_chat(body: dict, timeout: int) -> dict:
+    url = f"{OPENROUTER_BASE_URL}/chat/completions"
+    payload = json.dumps(body).encode("utf-8")
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "HTTP-Referer": os.environ.get(
+            "OPENROUTER_HTTP_REFERER", "https://local.stoix.dev"
+        ),
+        "X-Title": os.environ.get("OPENROUTER_APP_TITLE", "STOIX Red Pill"),
+    }
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def _extract_openrouter_text(data: dict) -> str:
+    ch = data.get("choices") or []
+    if not ch:
+        raise RuntimeError(f"OpenRouter: no choices in {json.dumps(data)[:500]}")
+    msg = ch[0].get("message") or {}
+    content = msg.get("content")
+    if content is None:
+        raise RuntimeError("OpenRouter: empty message content")
+    if isinstance(content, list):
+        bits = []
+        for p in content:
+            if isinstance(p, dict) and p.get("type") == "text":
+                bits.append(p.get("text", ""))
+        content = "".join(bits)
+    text_out = str(content).strip()
+    if not text_out:
+        raise RuntimeError("OpenRouter: empty assistant text")
+    return text_out
+
+
+def call_openrouter(
+    prompt: str,
+    *,
+    want_json: bool = False,
+    images: Optional[list] = None,
+    timeout: int = 300,
+    model_chain: Optional[list] = None,
+    label: str = "chat",
+) -> str:
+    if not OPENROUTER_API_KEY:
+        raise RuntimeError("OPENROUTER_API_KEY not set")
+    chain = list(model_chain or OPENROUTER_MODEL_CHAIN)
+    if not chain:
+        raise RuntimeError("No OpenRouter models configured")
+    last_err: Optional[BaseException] = None
+    for model in chain:
+        for attempt in range(3):
+            try:
+                body: dict = {
+                    "model": model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": _openrouter_user_content(prompt, images),
+                        }
+                    ],
+                    "temperature": 0.6,
+                    "max_tokens": OPENROUTER_MAX_TOKENS,
+                }
+                if want_json:
+                    body["response_format"] = {"type": "json_object"}
+                data = _post_openrouter_chat(body, timeout=timeout)
+                text = _extract_openrouter_text(data)
+                if model != chain[0] or attempt > 0:
+                    print(
+                        f"[openrouter] {label} ok model={model} attempt={attempt + 1}",
+                        flush=True,
+                    )
+                return text
+            except urllib.error.HTTPError as e:
+                err_body = ""
+                try:
+                    err_body = e.read().decode("utf-8", errors="replace")[:500]
+                except Exception:
+                    pass
+                last_err = RuntimeError(f"HTTP {e.code}: {err_body}")
+                print(f"[openrouter] {label} model={model} HTTP {e.code}", flush=True)
+                transient = e.code in {429, 500, 502, 503, 504}
+                if transient and attempt < 2:
+                    time.sleep(2**attempt)
                     continue
                 break
+            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as e:
+                last_err = e
+                if attempt < 2:
+                    delay = 2**attempt
+                    print(
+                        f"[openrouter] {label} attempt {attempt + 1}: {e} — retry in {delay}s",
+                        flush=True,
+                    )
+                    time.sleep(delay)
+                else:
+                    break
+            except RuntimeError as e:
+                last_err = e
+                print(f"[openrouter] {label} model={model}: {e}", flush=True)
+                break
+    raise RuntimeError(f"OpenRouter failed ({label}): {last_err}")
 
-    raise RuntimeError(f"Gemini API exhausted all retries: {last_err}")
+
+def _llm_timeout_for(label: str) -> int:
+    if use_openrouter():
+        return {
+            "research": OPENROUTER_TIMEOUT_RESEARCH,
+            "plan": OPENROUTER_TIMEOUT_PLAN,
+            "vision": OPENROUTER_TIMEOUT_VISION,
+        }.get(label, 300)
+    return {
+        "research": OLLAMA_TIMEOUT_RESEARCH,
+        "plan": OLLAMA_TIMEOUT_PLAN,
+        "vision": OLLAMA_TIMEOUT_VISION,
+    }.get(label, 300)
 
 
-def _extract_text(data: dict) -> str:
-    candidates = data.get("candidates") or []
-    if not candidates:
-        raise RuntimeError(f"Gemini returned no candidates: {json.dumps(data)[:400]}")
-
-    parts = candidates[0].get("content", {}).get("parts", [])
-    text_out = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
-    if not text_out.strip():
-        raise RuntimeError("Gemini returned empty text.")
-    return text_out
+def call_llm(
+    prompt: str,
+    *,
+    want_json: bool = False,
+    images: Optional[list] = None,
+    timeout: Optional[int] = None,
+    model_chain: Optional[list] = None,
+    label: str = "chat",
+) -> str:
+    t = timeout if timeout is not None else _llm_timeout_for(label)
+    if use_openrouter():
+        return call_openrouter(
+            prompt,
+            want_json=want_json,
+            images=images,
+            timeout=t,
+            model_chain=model_chain,
+            label=label,
+        )
+    return call_ollama(
+        prompt,
+        want_json=want_json,
+        images=images,
+        timeout=t,
+        model_chain=model_chain,
+        label=label,
+    )
 
 
 # ---------- Calendar analysis phase ----------
@@ -274,7 +557,7 @@ def _extract_text(data: dict) -> str:
 #   { "type": "none" }
 #
 # Returns a plain-English summary of the user's typical weekly availability
-# that the downstream planner can feed to Gemini when picking task times.
+# that the downstream planner can use when picking task times.
 def analyze_calendar(cal, daily_minutes):
     if not cal or cal.get("type") == "none":
         return None
@@ -367,9 +650,12 @@ def analyze_ics(ics_text, daily_minutes):
 
 def analyze_images(images, daily_minutes):
     """
-    Send calendar screenshots to Gemini vision. Returns a plain-English
-    availability summary written by Gemini.
+    Send calendar screenshots to a vision-capable model (OpenRouter or Ollama).
+    Returns a plain-English availability summary.
     """
+    vchain = active_vision_chain()
+    if not vchain:
+        raise RuntimeError("No vision model configured — set OPENROUTER_VISION_MODEL or OLLAMA_VISION_MODEL.")
     prompt = f"""You are analyzing screenshots of a user's weekly calendar to extract when they are BUSY vs FREE.
 
 The user wants to schedule a recurring {daily_minutes}-minute task.
@@ -383,36 +669,46 @@ Write your answer as a plain text summary, one paragraph per weekday, using 24-h
 
 Finish with one line: "CONSISTENT FREE SLOT ACROSS ALL VISIBLE DAYS: HH:MM-HH:MM" if you can find a single time window free every day; otherwise write "CONSISTENT FREE SLOT: NONE".
 """
-    text = call_gemini(prompt, grounding=False, want_json=False, images=images)
+    text = call_llm(
+        prompt,
+        want_json=False,
+        images=images,
+        model_chain=vchain,
+        label="vision",
+    )
     return "User provided calendar screenshot(s). Vision analysis:\n\n" + text
 
 
 # ---------- Research phase ----------
 def research_phase(goal: str, days: int, daily_minutes: int) -> str:
-    prompt = f"""You are a research analyst. Before any planning, gather evidence-based insight on this goal.
+    prompt = f"""You are a research analyst. Before any planning, synthesize evidence-based insight on this goal.
 
 GOAL: "{goal}"
 TIMELINE: {days} days
 DAILY BUDGET: {daily_minutes} minutes
 
-Using Google Search, research the most effective, real-world practices for achieving this specific goal. Find:
+You do NOT have live web access. Use well-established knowledge from your training: widely recommended systems, textbooks, courses, and expert consensus. Find:
 
-1. Proven systems, frameworks, or curricula that experts recommend.
+1. Proven systems, frameworks, or curricula people use for this class of goal.
 2. Highest-leverage daily habits or drills that compound over time.
 3. Common beginner mistakes and how to avoid them.
 4. Foundational prerequisites that must be in place before intermediate work.
-5. Realistic milestones people actually hit in {days} days with ~{daily_minutes} minutes/day.
+5. Realistic milestones people often reach in {days} days with ~{daily_minutes} minutes/day.
 6. Specific techniques, exercises, or resources (named precisely — not generic advice).
 
-Write a focused research brief (250-400 words) summarizing what you found. Be specific and cite concrete methods, techniques, and resources by name. Do NOT invent; ground every claim in the search results. No fluff, no motivational filler — this is source material for a downstream planner.
+Write a focused research brief (250-400 words). Be specific. If you cite a named method or resource, only do so when it is a real, established one from your knowledge — do not fabricate citations or URLs. No fluff — this is source material for a downstream planner.
 """
-    return call_gemini(prompt, grounding=True, want_json=False)
+    return call_llm(
+        prompt,
+        want_json=False,
+        label="research",
+    )
 
 
 # ---------- Robust JSON parsing for plan phase ----------
 def _parse_plan_json(raw: str) -> dict:
     """
-    Gemini returns JSON, but occasionally malforms it with unescaped quotes,
+    The model returns JSON, but occasionally malforms it with unescaped quotes,
     trailing commas, or truncated output. This tries several repair passes
     before giving up, so a tiny syntax hiccup doesn't nuke the whole run.
     """
@@ -443,8 +739,7 @@ def _parse_plan_json(raw: str) -> dict:
         except Exception:
             pass
 
-        # 5) As a final fallback, try to salvage just the `tasks` array and
-        #    parse up to the last complete task object.
+        # 5) As a final fallback, try to salvage just the `tasks` array.
         salvaged = _salvage_tasks(repaired)
         if salvaged:
             return salvaged
@@ -454,7 +749,7 @@ def _parse_plan_json(raw: str) -> dict:
 
 def _salvage_tasks(text):
     """
-    Extract a valid prefix of the tasks array. If Gemini truncates output
+    Extract a valid prefix of the tasks array. If the model truncates output
     mid-task, we can still recover every preceding complete task.
     """
     tasks_match = re.search(r'"tasks"\s*:\s*\[', text)
@@ -511,6 +806,198 @@ def _salvage_tasks(text):
     return {"tasks": tasks, "decomposition": {}}
 
 
+def _normalize_hhmm(s: str, default: str = "09:00") -> str:
+    """Accept H:MM or HH:MM and return zero-padded HH:MM."""
+    if not s:
+        return default
+    s = str(s).strip()
+    m = re.match(r"^(\d{1,2}):(\d{2})(?::\d{2})?$", s)
+    if not m:
+        return default
+    h, mi = int(m.group(1)), int(m.group(2))
+    if 0 <= h <= 23 and 0 <= mi <= 59:
+        return f"{h:02d}:{mi:02d}"
+    return default
+
+
+def _phase_for_day(day: int, days: int) -> str:
+    if days <= 1:
+        return "Foundation"
+    pos = (day - 1) / (days - 1)
+    if pos < 0.25:
+        return "Foundation"
+    if pos < 0.5:
+        return "Build"
+    if pos < 0.75:
+        return "Push"
+    return "Mastery"
+
+
+_MILESTONE_BY_PHASE = {
+    "Foundation": "Orientation and constraints",
+    "Build": "Skill and habit scaffolding",
+    "Push": "Volume and deliberate difficulty",
+    "Mastery": "Integration and consolidation",
+}
+
+# Pre-planned daily micro-tasks when Ollama is unavailable or generation fails.
+# Cycles for long timelines.
+_FALLBACK_BLUEPRINTS = [
+    (
+        "Write your north-star outcome",
+        "In {m} minutes, write one sentence that defines success for this goal: {g}. Make it concrete enough that someone else could tell if you achieved it.",
+    ),
+    (
+        "Capture your baseline",
+        "Spend {m} minutes logging where you are today for this goal (skills, habits, metrics, blockers). Date the note so you can compare later.",
+    ),
+    (
+        "Name your riskiest unknown",
+        "List three questions you must answer to reach your goal. Circle the one whose wrong answer would hurt most; spend {m} minutes outlining how you will test it this week.",
+    ),
+    (
+        "Remove one friction point",
+        "Pick one small environmental change that makes the next session easier (tools ready, tab closed, shoes by the door). Implement it in {m} minutes.",
+    ),
+    (
+        "Decompose into three pillars",
+        "Break the goal into three supporting pillars or sub-skills. Spend {m} minutes writing one line per pillar and one success signal for each.",
+    ),
+    (
+        "Pick one canonical resource",
+        "Choose a single book, course, or reference you will treat as primary for now. In {m} minutes, skim the outline or chapter list and note where you will start tomorrow.",
+    ),
+    (
+        "Smallest viable rep",
+        "Define the tiniest version of practice that still counts (one set, one paragraph, one drill). Do that rep once, timed, within {m} minutes.",
+    ),
+    (
+        "Start a simple log",
+        "Create a one-line daily log format (date, minutes, what you did, 1–10 energy). Use {m} minutes to set it up and enter today.",
+    ),
+    (
+        "Deliberate weakness work",
+        "Identify your weakest pillar from earlier. Spend {m} minutes on one drill or exercise aimed only at that gap — no new topics.",
+    ),
+    (
+        "Explain it out loud",
+        "Use the Feynman-style approach: explain one core idea from your goal to an imaginary beginner in {m} minutes. Note where you stumbled; that is your study list.",
+    ),
+    (
+        "Progressive overload",
+        "Repeat yesterday's core rep with one controlled increase (more focus, stricter form, tighter time box, or +10% load if safe). Keep total work inside {m} minutes.",
+    ),
+    (
+        "Review and adjust",
+        "Read the last five log entries. In {m} minutes, write one pattern you see and one change you will make for the next three days.",
+    ),
+    (
+        "Rehearse under mild pressure",
+        "Simulate real conditions: timer visible, phone away, same time of day as your anchor. Complete one full cycle of your main practice in {m} minutes.",
+    ),
+    (
+        "Failure mode check",
+        "List two ways this goal usually fails for people. Spend {m} minutes writing one guardrail you will use this week for each.",
+    ),
+    (
+        "Combine skills",
+        "Pick two micro-skills you have practiced and chain them in one session (no new content). Finish within {m} minutes.",
+    ),
+    (
+        "Quality pass",
+        "Redo one prior task at higher quality bar (slower, cleaner, more precise). {m} minutes max — stop when quality peaks, not when time runs out.",
+    ),
+    (
+        "Accountability artifact",
+        "Draft a one-sentence commitment message you could send to a friend or calendar note. Spend {m} minutes refining it and scheduling the next check-in.",
+    ),
+    (
+        "Next horizon",
+        "If you succeeded on schedule, what is the next chapter after this {m}-minute daily habit? Write three bullets for the next phase in {m} minutes.",
+    ),
+]
+
+
+def _fallback_research(goal: str, days: int, daily_minutes: int) -> str:
+    g = goal.strip() or "your goal"
+    return (
+        "OFFLINE PROTOCOL NOTE: No LLM run succeeded (set OPENROUTER_API_KEY or run Ollama; or fix errors/timeouts). "
+        "This brief is a generic evidence-style scaffold.\n\n"
+        f"Goal: {g}\nTimeline: {days} days at {daily_minutes} minutes per day.\n\n"
+        "Strong protocols usually combine: clear outcomes and self-assessment, short daily sessions "
+        "you can finish without negotiation, immediate logging, progressive overload within safe limits, "
+        "and environment design that reduces friction. Treat each day as one focused rep; adapt the "
+        "prompts to your domain while keeping every block completable in the time you chose."
+    )
+
+
+def _offline_tasks(
+    goal: str,
+    days: int,
+    daily_minutes: int,
+    start_weekday: int,
+    anchor_time: str,
+    availability: Optional[str],
+) -> list:
+    g = (goal.strip() or "your goal").replace("\r", " ").replace("\n", " ")
+    if len(g) > 200:
+        g = g[:197] + "..."
+    m = int(daily_minutes)
+    dow_names = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
+    t = _normalize_hhmm(anchor_time)
+    if availability:
+        note = (
+            "Offline plan — .ics was parsed locally for context; all tasks use your "
+            "preferred start time (AI time optimization disabled)."
+        )
+    else:
+        note = "Offline plan — using your preferred start time (no live AI scheduling)."
+
+    decomposition = {
+        "prerequisites": [
+            "A clear written outcome and a daily time box you can defend",
+            "A simple log so you can see streaks and bottlenecks",
+        ],
+        "milestones": [
+            "Constraints and baseline captured",
+            "Core practice loop running daily",
+            "Difficulty and quality deliberately increased",
+            "Skills integrated; next horizon defined",
+        ],
+        "final_outcome": f"After {days} days of consistent reps, you have measurable progress toward: {g}",
+    }
+
+    n_blue = len(_FALLBACK_BLUEPRINTS)
+    out = []
+    for day in range(1, days + 1):
+        phase = _phase_for_day(day, days)
+        title, desc_tmpl = _FALLBACK_BLUEPRINTS[(day - 1) % n_blue]
+        desc = desc_tmpl.format(m=m, g=g)
+        weekday = dow_names[(start_weekday + day - 1) % 7]
+        out.append(
+            {
+                "day": day,
+                "weekday": weekday,
+                "phase": phase,
+                "milestone": _MILESTONE_BY_PHASE.get(phase, "Progress"),
+                "title": title,
+                "description": desc,
+                "scheduled_time": t,
+                "schedule_note": note,
+                "_decomposition": decomposition,
+            }
+        )
+    return out
+
+
 # ---------- Decomposition + daily task phase ----------
 def plan_phase(goal, days, daily_minutes, research, availability=None,
                start_weekday=None, fallback_time="09:00"):
@@ -526,18 +1013,36 @@ def plan_phase(goal, days, daily_minutes, research, availability=None,
 
     # Availability section injected only if we have calendar data
     if availability:
+        preferred = fallback_time
         availability_block = f"""
 === USER AVAILABILITY ===
 {availability}
 === END AVAILABILITY ===
 
-SCHEDULING INSTRUCTIONS (MANDATORY):
-- For each task, assign a "scheduled_time" (24h HH:MM) that actually fits the user's availability for the weekday that task falls on.
-- STRONGLY PREFER the same time across all days. Find one {daily_minutes}-minute window that is FREE every day in the data above, and use that for every task.
-- Only deviate when the preferred slot is genuinely blocked on a given weekday. In those cases, pick the next-best free {daily_minutes}-minute window on that weekday.
-- Never schedule a task into a window the user is busy.
-- Never invent availability not in the data.
-- Add a one-sentence "schedule_note" for each task explaining why that time was chosen (e.g. "Consistent 07:30 slot — free every weekday", or "Mondays blocked 9-12, moved to 14:00").
+USER_PREFERRED_ANCHOR_TIME: {preferred} (24h). The user chose this as their ideal daily start time for tasks.
+
+SCHEDULING INSTRUCTIONS (MANDATORY — READ CAREFULLY):
+
+1) GLOBAL DEFAULT (highest priority)
+   - First, assume EVERY task uses scheduled_time = {preferred} unless that exact {daily_minutes}-minute window is impossible on that calendar day.
+   - If {preferred} is free on ALL weekdays covered by the protocol for a contiguous {daily_minutes}-minute block, use {preferred} for every task.
+
+2) SAME-TIME-ACROSS-WEEK (when anchor is not universally free)
+   - Search for ONE clock time HH:MM that yields a free {daily_minutes}-minute block on every weekday in the data; if found, use it for all tasks (even if it is not {preferred}).
+
+3) PER-DAY OVERRIDES (only when a weekday cannot use the global choice)
+   - NEVER move a day to another weekday's free time. Each day is solved independently.
+   - For any weekday where the chosen global time (from step 1 or 2) overlaps a busy block OR cannot fit {daily_minutes} minutes, pick a DIFFERENT scheduled_time for tasks that fall on THAT weekday ONLY.
+   - Choose the single most convenient alternative ON THAT DAY: prefer the free window immediately AFTER the blocking event ends; if none, immediately BEFORE it begins; otherwise the nearest large free gap still on that day.
+   - Stay as close as reasonable on the clock to {preferred} (same afternoon vs morning cluster) when multiple options exist.
+
+4) HARD RULES
+   - Never place a task inside a busy window shown in the availability data.
+   - Never invent events or free time not supported by the data.
+   - "schedule_note" must cite the weekday when you deviate (e.g. "Wed+Thu: 14:00 blocked by class 14:00-16:00 — using 16:15 after class").
+
+5) FORMAT
+   - "scheduled_time" is exactly HH:MM (24h) per task.
 """
     else:
         availability_block = f"""
@@ -616,7 +1121,11 @@ CRITICAL JSON OUTPUT RULES — FAILURE TO FOLLOW WILL BREAK THE SYSTEM:
 - "scheduled_time" must be 5 chars exactly in HH:MM 24h format.
 """
 
-    raw = call_gemini(prompt, grounding=False, want_json=True)
+    raw = call_llm(
+        prompt,
+        want_json=True,
+        label="plan",
+    )
 
     parsed = _parse_plan_json(raw)
 
@@ -1078,13 +1587,22 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == "/api/health":
+            or_cfg = use_openrouter()
+            oa = ollama_reachable()
             return self._send_json(
                 200,
                 {
                     "ok": True,
-                    "hasKey": bool(GEMINI_API_KEY),
-                    "model": MODEL,
-                    "provider": "gemini",
+                    "provider": "openrouter" if or_cfg else "ollama",
+                    "model": OPENROUTER_MODEL if or_cfg else OLLAMA_MODEL,
+                    "visionModel": (
+                        OPENROUTER_VISION_MODEL if or_cfg else OLLAMA_VISION_MODEL
+                    )
+                    or None,
+                    "openrouterConfigured": or_cfg,
+                    "ollamaHost": OLLAMA_HOST,
+                    "ollamaReachable": oa,
+                    "hasKey": or_cfg or oa,
                 },
             )
 
@@ -1154,7 +1672,7 @@ class Handler(BaseHTTPRequestHandler):
                 400, {"ok": False, "error": "dailyMinutes must be 5-60"}
             )
 
-        start_time = str(body.get("startTime") or "09:00").strip()
+        start_time = _normalize_hhmm(str(body.get("startTime") or ""))
         start_date = str(body.get("startDate") or "").strip()
         calendar = body.get("calendar") or {"type": "none"}
 
@@ -1175,20 +1693,79 @@ class Handler(BaseHTTPRequestHandler):
             flush=True,
         )
 
+        availability = None
+
+        def _respond_ok(tasks, research, source: str):
+            return self._send_json(
+                200,
+                {
+                    "ok": True,
+                    "tasks": tasks,
+                    "research": research,
+                    "availability": availability or "",
+                    "source": source,
+                },
+            )
+
         try:
-            # PASS 0: calendar analysis (only if calendar provided)
-            availability = None
-            if calendar.get("type") in ("images", "ics"):
-                print("[generate] pass 0: calendar analysis...", flush=True)
-                availability = analyze_calendar(calendar, daily_minutes)
-                if availability:
+            llm_up = llm_ready()
+            vchain = active_vision_chain()
+
+            # PASS 0: .ics parses locally; images use vision model when configured
+            if calendar.get("type") == "ics":
+                print("[generate] pass 0: .ics availability (local parse)...", flush=True)
+                try:
+                    availability = analyze_ics(
+                        str(calendar.get("text", "")), daily_minutes
+                    )
+                except Exception as ce:
+                    print(f"[generate] ics parse failed: {ce}", flush=True)
+            elif calendar.get("type") == "images":
+                imgs = calendar.get("images") or []
+                if imgs and llm_up and vchain:
+                    print("[generate] pass 0: calendar images (vision)...", flush=True)
+                    try:
+                        availability = analyze_images(imgs, daily_minutes)
+                    except Exception as ve:
+                        print(
+                            f"[generate] image calendar analysis failed: {ve}",
+                            flush=True,
+                        )
+                elif imgs:
                     print(
-                        f"[generate] availability summary: {len(availability)} chars",
+                        "[generate] skipping calendar vision "
+                        "(no API key / Ollama down, or no vision model in .env)",
                         flush=True,
                     )
 
+            if availability:
+                print(
+                    f"[generate] availability summary: {len(availability)} chars",
+                    flush=True,
+                )
+
+            if not llm_up:
+                print(
+                    "[generate] Set OPENROUTER_API_KEY (cloud) or start Ollama — offline ladder",
+                    flush=True,
+                )
+                tasks = _offline_tasks(
+                    goal,
+                    days,
+                    daily_minutes,
+                    start_weekday,
+                    start_time,
+                    availability,
+                )
+                return _respond_ok(
+                    tasks,
+                    _fallback_research(goal, days, daily_minutes),
+                    "offline",
+                )
+
             # PASS 1: research
-            print("[generate] pass 1: research (google_search grounding)...", flush=True)
+            backend = "OpenRouter" if use_openrouter() else "Ollama"
+            print(f"[generate] pass 1: research ({backend})...", flush=True)
             research = research_phase(goal, days, daily_minutes)
             print(f"[generate] research brief: {len(research)} chars", flush=True)
 
@@ -1205,18 +1782,24 @@ class Handler(BaseHTTPRequestHandler):
             )
             print(f"[generate] returned {len(tasks)} tasks", flush=True)
 
-            return self._send_json(
-                200,
-                {
-                    "ok": True,
-                    "tasks": tasks,
-                    "research": research,
-                    "availability": availability or "",
-                },
-            )
+            src = "cloud" if use_openrouter() else "local"
+            return _respond_ok(tasks, research, src)
         except Exception as e:
             print(f"[generate] error: {e}", flush=True)
-            return self._send_json(500, {"ok": False, "error": str(e)})
+            print("[generate] falling back to offline task ladder", flush=True)
+            tasks = _offline_tasks(
+                goal,
+                days,
+                daily_minutes,
+                start_weekday,
+                start_time,
+                availability,
+            )
+            return _respond_ok(
+                tasks,
+                _fallback_research(goal, days, daily_minutes),
+                "offline",
+            )
 
     def _handle_blue_pill(self):
         length = int(self.headers.get("Content-Length") or 0)
@@ -1299,12 +1882,19 @@ def main():
             "UI: legacy static files only — run: "
             'cd "cordial-matrix-logic-lab-2 4" && npm install && npm run build'
         )
-    print(f"Provider: Google Gemini  Model: {MODEL}")
-    if not GEMINI_API_KEY:
-        print("WARNING: GEMINI_API_KEY not set. Add it to .env to enable AI tasks.")
-        print("         (Frontend will silently fall back to rule-based plans.)")
+    if use_openrouter():
+        print(f"LLM: OpenRouter  model={OPENROUTER_MODEL}")
+        print(f"     Vision: {OPENROUTER_VISION_MODEL}")
+        print(f"     Fallbacks: {', '.join(OPENROUTER_MODEL_CHAIN)}")
     else:
-        print("API key: loaded")
+        print(f"LLM: Ollama at {OLLAMA_HOST} (set OPENROUTER_API_KEY to use cloud)")
+        print(f"     Text: {', '.join(OLLAMA_MODEL_CHAIN)}")
+        if OLLAMA_VISION_CHAIN:
+            print(f"     Vision: {', '.join(OLLAMA_VISION_CHAIN)}")
+        if not ollama_reachable():
+            print("WARNING: Ollama not reachable — /api/generate-tasks will use offline tasks.")
+        else:
+            print("Ollama: reachable")
     print("Press Ctrl+C to stop.\n")
     try:
         server.serve_forever()

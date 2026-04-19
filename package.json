@@ -1,0 +1,17 @@
+{
+  "name": "stoix-red-pill",
+  "private": true,
+  "description": "Root scripts delegate to the Vite UI in cordial-matrix-logic-lab-2 4/",
+  "scripts": {
+    "build": "npm run build --prefix \"./cordial-matrix-logic-lab-2 4\"",
+    "dev": "npm run dev --prefix \"./cordial-matrix-logic-lab-2 4\"",
+    "lint": "npm run lint --prefix \"./cordial-matrix-logic-lab-2 4\"",
+    "server": "python3 server.py",
+    "stoix:kill": "bash scripts/stoix-kill.sh",
+    "stoix:up": "concurrently -k -n server,vite -c blue,green \"bash scripts/stoix-server.sh\" \"bash scripts/stoix-vite.sh\"",
+    "stoix:restart": "npm run stoix:kill && npm run stoix:up"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

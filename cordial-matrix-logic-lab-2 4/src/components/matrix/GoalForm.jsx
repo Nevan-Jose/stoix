@@ -18,12 +18,14 @@ function fileToDataURL(file) {
 
 // ---- GoalForm ----
 // Props:
-//   onSubmit({ goal, days, dailyMinutes, calendar }) → void
+//   onSubmit({ goal, days, dailyMinutes, calendar, startTime }) → void
 //   isLoading: boolean
 export default function GoalForm({ onSubmit, isLoading }) {
   const [goal, setGoal]               = useState('');
   const [days, setDays]               = useState('');
   const [dailyMinutes, setDailyMinutes] = useState('30');
+  /** Shown when calendar data is attached — sent as startTime (HH:MM) to the API. */
+  const [preferredStartTime, setPreferredStartTime] = useState('09:00');
 
   // Calendar attachments state
   const [calImages, setCalImages]   = useState([]); // [{ name, mime, dataURL }]
@@ -113,6 +115,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
       days:         parseInt(days, 10),
       dailyMinutes: Number.isFinite(dm) ? dm : 30,
       calendar:     buildCalendarPayload(),
+      startTime:    preferredStartTime || '09:00',
     });
   };
 
@@ -277,6 +280,28 @@ export default function GoalForm({ onSubmit, isLoading }) {
           {/* Hidden file inputs */}
           <input ref={imageInputRef} type="file" accept="image/*" multiple hidden onChange={handleImageInput} />
           <input ref={icsInputRef}   type="file" accept=".ics,text/calendar" hidden onChange={handleICSInput} />
+
+          {hasAttachments && (
+            <div className="space-y-2 border border-primary/25 rounded-lg p-4 bg-primary/5">
+              <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
+                {'> '}Preferred daily task time
+              </Label>
+              <Input
+                type="time"
+                step={60}
+                value={preferredStartTime}
+                onChange={(e) => setPreferredStartTime(e.target.value || '09:00')}
+                className="bg-background border-border font-mono text-foreground max-w-[200px] focus:border-primary focus:ring-primary/30"
+                disabled={isLoading}
+              />
+              <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+                STOIX tries to use this same clock time on every day your protocol runs. If your calendar blocks that
+                window on specific weekdays only, the model picks the most practical alternative on{' '}
+                <span className="text-foreground/90">those days only</span> (for example right after a class ends),
+                without shifting unrelated days.
+              </p>
+            </div>
+          )}
 
           {/* Days */}
           <div className="space-y-2">

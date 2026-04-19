@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  ChevronLeft, ChevronRight, Download, RotateCcw,
+  ChevronLeft, ChevronRight, RotateCcw,
   Clock, Target, Calendar,
 } from 'lucide-react';
 import {
@@ -50,30 +50,80 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
   const prevMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   const nextMonth = () => setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
 
-  // Download as CSV
-  const handleDownload = () => {
-    let csv = 'Day,Date,Weekday,Phase,Scheduled Time,Task,Milestone,Description,Duration\n';
+  const handleDownloadIcs = () => {
+    const escapeIcsText = (s) =>
+      String(s || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/;/g, '\\;')
+        .replace(/,/g, '\\,')
+        .replace(/\r\n|\n|\r/g, '\\n');
+
+    const parseDurationMinutes = (durationStr) => {
+      const m = String(durationStr || '').match(/(\d+)/);
+      if (!m) return 30;
+      return Math.min(480, Math.max(5, parseInt(m[1], 10)));
+    };
+
+    const parseClockOnDay = (dayDate, hhmm) => {
+      const d = new Date(dayDate);
+      const m = String(hhmm || '09:00').trim().match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) {
+        d.setHours(9, 0, 0, 0);
+        return d;
+      }
+      d.setHours(parseInt(m[1], 10), parseInt(m[2], 10), 0, 0);
+      return d;
+    };
+
+    const toUtcStamp = (d) => {
+      const iso = d.toISOString();
+      return `${iso.slice(0, 10).replace(/-/g, '')}T${iso.slice(11, 19).replace(/:/g, '')}Z`;
+    };
+
+    const stampNow = toUtcStamp(new Date());
+
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//STOIX//Red Pill//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+    ];
+
     tasks.forEach((task, i) => {
-      const date = format(addDays(planStart, i), 'yyyy-MM-dd');
-      const q    = (s) => `"${String(s || '').replace(/"/g, '""')}"`;
-      csv += [
-        i + 1,
-        date,
-        q(task.weekday),
-        q(task.phase),
-        q(task.scheduledTime),
-        q(task.title),
-        q(task.milestone),
-        q(task.description),
-        q(task.duration),
-      ].join(',') + '\n';
+      const dayDate = addDays(planStart, i);
+      const start = parseClockOnDay(dayDate, task.scheduledTime);
+      const mins = parseDurationMinutes(task.duration);
+      const end = new Date(start.getTime() + mins * 60 * 1000);
+      const uid = `stoix-${format(dayDate, 'yyyyMMdd')}-${i}-${Math.random().toString(36).slice(2, 10)}@stoix.local`;
+      const summary = escapeIcsText(task.title);
+      const descParts = [
+        task.description,
+        task.phase && `Phase: ${task.phase}`,
+        task.milestone && `Milestone: ${task.milestone}`,
+        task.scheduleNote && `Schedule: ${task.scheduleNote}`,
+        `Day ${i + 1} of ${tasks.length} · ${goal}`,
+      ].filter(Boolean);
+      const description = escapeIcsText(descParts.join('\\n'));
+
+      lines.push('BEGIN:VEVENT');
+      lines.push(`UID:${uid}`);
+      lines.push(`DTSTAMP:${stampNow}`);
+      lines.push(`DTSTART:${toUtcStamp(start)}`);
+      lines.push(`DTEND:${toUtcStamp(end)}`);
+      lines.push(`SUMMARY:${summary}`);
+      lines.push(`DESCRIPTION:${description}`);
+      lines.push('END:VEVENT');
     });
 
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `stoix-protocol-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    lines.push('END:VCALENDAR');
+
+    const ics = lines.join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stoix-protocol-${format(new Date(), 'yyyy-MM-dd')}.ics`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -98,11 +148,11 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
         </div>
         <div className="flex gap-2">
           <Button
-            onClick={handleDownload}
+            onClick={handleDownloadIcs}
             variant="outline"
             className="font-mono border-border text-foreground hover:bg-accent gap-2"
           >
-            <Download className="w-4 h-4" /> Download CSV
+            <Calendar className="w-4 h-4" /> Download .ics
           </Button>
           <Button
             onClick={onReset}
