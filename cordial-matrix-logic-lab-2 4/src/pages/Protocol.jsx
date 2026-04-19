@@ -78,14 +78,6 @@ export default function Protocol() {
         return;
       }
 
-      if (data.source === 'offline') {
-        toast({
-          title:       'Offline protocol',
-          description:
-            'Cloud/local LLM unavailable or the request failed. You still get a full offline task ladder you can run and export.',
-        });
-      }
-
       setTasks(mapApiTasks(data.tasks, dailyMinutes));
     } catch (e) {
       toast({
