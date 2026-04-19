@@ -2,6 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
+import {
+  introShouldStartAtChoice,
+  markIntroReachedChoice,
+} from '@/lib/stoix-nav';
 
 // Phases:
 // 'hello'       — type "Hello.", hold 3s → question
@@ -78,10 +82,13 @@ const RAIN_START_INTENSITY = 0.04;
 const RAIN_START_SPEED = 0.22;
 
 export default function IntroScreen() {
-  const [phase, setPhase] = useState('hello');
+  const startAtChoice = introShouldStartAtChoice();
+  const [phase, setPhase] = useState(() => (startAtChoice ? 'choice' : 'hello'));
   const [rainIntensity, setRainIntensity] = useState(RAIN_FINAL_INTENSITY);
   const [rainSpeed, setRainSpeed] = useState(RAIN_FINAL_SPEED);
-  const [rainOverlayOpacity, setRainOverlayOpacity] = useState(0);
+  const [rainOverlayOpacity, setRainOverlayOpacity] = useState(() =>
+    startAtChoice ? 1 : 0
+  );
   const navigate = useNavigate();
 
   const helloLine = 'Hello.';
@@ -113,6 +120,12 @@ export default function IntroScreen() {
   }, [phase, questionDone]);
 
   useEffect(() => {
+    if (phase === 'choice') {
+      markIntroReachedChoice();
+    }
+  }, [phase]);
+
+  useEffect(() => {
     if (phase !== 'transition') return;
 
     const t0 = performance.now();
@@ -140,10 +153,12 @@ export default function IntroScreen() {
   }, [phase]);
 
   const handleRedPill = () => {
+    markIntroReachedChoice();
     navigate('/protocol');
   };
 
   const handleBluePill = () => {
+    markIntroReachedChoice();
     navigate('/blue');
   };
 

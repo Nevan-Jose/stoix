@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ArrowLeft, Loader2, MapPin, Clock, DollarSign, Compass, Target } from 'lucide-react';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
 import { useToast } from '@/components/ui/use-toast';
+import { goBackNavigate } from '@/lib/stoix-nav';
 
 function QuestCard({ quest, index }) {
   const [expanded, setExpanded] = useState(false);
@@ -363,6 +364,7 @@ function SkillForm({ onSubmit, isLoading }) {
 }
 
 export default function BluePill() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('quests');
   const [isLoading, setIsLoading] = useState(false);
@@ -452,9 +454,14 @@ export default function BluePill() {
           transition={{ duration: 0.6 }}
           className="py-6 px-6 sm:px-12 flex items-center gap-4"
         >
-          <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Back">
+          <button
+            type="button"
+            onClick={() => goBackNavigate(navigate)}
+            className="text-muted-foreground hover:text-foreground transition-colors p-0 bg-transparent border-0 cursor-pointer"
+            aria-label="Back"
+          >
             <ArrowLeft className="w-4 h-4" />
-          </Link>
+          </button>
           <div>
             <h1
               className="font-mono text-xl sm:text-2xl tracking-widest"

@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
 import GoalForm from '../components/matrix/GoalForm';
 import TaskCalendar from '../components/matrix/TaskCalendar';
 import { format, startOfDay } from 'date-fns';
 import { useToast } from '@/components/ui/use-toast';
 import { stoixApiUrl } from '@/lib/stoix-api';
+import { goBackNavigate } from '@/lib/stoix-nav';
 
 // Map the backend task objects to the shape TaskCalendar expects.
 // Keeps fields as structured props rather than concatenating into description.
@@ -26,6 +29,7 @@ function mapApiTasks(rawTasks, dailyMinutes) {
 }
 
 export default function Protocol() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [tasks, setTasks]         = useState(null);
   const [goalText, setGoalText]   = useState('');
@@ -107,12 +111,24 @@ export default function Protocol() {
           transition={{ duration: 0.6 }}
           className="py-6 px-6 sm:px-12"
         >
-          <h1 className="font-mono text-xl sm:text-2xl text-glow-strong tracking-widest">
-            STOIX // RED PILL
-          </h1>
-          <p className="font-mono text-xs text-muted-foreground mt-1 tracking-wider">
-            Evidence-style protocol — cloud open models (OpenRouter) or Ollama + daily micro-tasks.
-          </p>
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              onClick={() => goBackNavigate(navigate)}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1 mt-0.5 rounded-md shrink-0 bg-transparent border-0 cursor-pointer"
+              aria-label="Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div className="min-w-0">
+              <h1 className="font-mono text-xl sm:text-2xl text-glow-strong tracking-widest">
+                STOIX // RED PILL
+              </h1>
+              <p className="font-mono text-xs text-muted-foreground mt-1 tracking-wider">
+                Evidence-style protocol — cloud open models (OpenRouter) or Ollama + daily micro-tasks.
+              </p>
+            </div>
+          </div>
         </motion.header>
 
         <main className="flex-1 flex items-start justify-center px-4 sm:px-6 pb-12 pt-4 sm:pt-8">
