@@ -1,11 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MatrixRainBg from '../components/matrix/MatrixRainBg';
-import {
-  introShouldStartAtChoice,
-  markIntroReachedChoice,
-} from '@/lib/stoix-nav';
+import { getIntroInitialPhase } from '@/lib/stoix-nav';
 import { STOIX_MATRIX_INTENSITY, STOIX_MATRIX_SPEED } from '@/lib/matrix-rain-presets';
 
 // Phases:
@@ -23,7 +20,11 @@ function useTypewriter(text, charDelay, startTyping) {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (!startTyping) return;
+    if (!startTyping) {
+      setDisplayed('');
+      setDone(false);
+      return;
+    }
     setDisplayed('');
     setDone(false);
     let i = 0;
@@ -41,96 +42,7 @@ function useTypewriter(text, charDelay, startTyping) {
   return { displayed, done };
 }
 
-const CYPHER_POOL =
-  'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾜﾝ';
-
-const CHOICE_COPY = {
-  header: '[ STOIX // PROTOCOL SELECTION ]',
-  headline: 'Which side are you on?',
-  blurb:
-    'Two paths diverge. One demands discipline. The other offers exploration.\nChoose with care — the path shapes the protocol.',
-  blueTitle: 'BLUE PILL',
-  blueStrong: 'Exploration.',
-  blueBody: 'Side quests, skill learning, real-world discovery.',
-  redTitle: 'RED PILL',
-  redStrong: 'Discipline.',
-  redBody: 'Structured protocol toward a specific goal.',
-  footer:
-    'Your decision is not final. You can return and choose again at any time.',
-};
-
-function useCypherReveal(text, active, { delay = 0, duration = 1420 } = {}) {
-  const [display, setDisplay] = useState('');
-  /** One decode pass per time `active` becomes true (choice screen visit); no restart while visible */
-  const hasStartedRef = useRef(false);
-
-  useEffect(() => {
-    if (!active) {
-      hasStartedRef.current = false;
-      setDisplay('');
-      return;
-    }
-
-    if (hasStartedRef.current) {
-      setDisplay(text);
-      return;
-    }
-    hasStartedRef.current = true;
-
-    if (
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-      setDisplay(text);
-      return;
-    }
-
-    let rafId = 0;
-    const timeoutId = window.setTimeout(() => {
-      const start = performance.now();
-      const step = (now) => {
-        const elapsed = now - start;
-        const t = Math.min(1, elapsed / duration);
-        // Slow lock-in: most characters stay cypher until late in the window
-        const eased = t ** 1.28;
-        const nReveal = Math.min(text.length, Math.ceil(eased * text.length));
-        let s = '';
-        for (let i = 0; i < text.length; i++) {
-          const c = text[i];
-          if (c === '\n') {
-            s += '\n';
-            continue;
-          }
-          if (c === ' ') {
-            s += ' ';
-            continue;
-          }
-          if (i < nReveal) {
-            s += c;
-            continue;
-          }
-          s += CYPHER_POOL[Math.floor(Math.random() * CYPHER_POOL.length)];
-        }
-        setDisplay(s);
-        if (t < 1) {
-          rafId = requestAnimationFrame(step);
-        } else {
-          setDisplay(text);
-        }
-      };
-      rafId = requestAnimationFrame(step);
-    }, delay);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      cancelAnimationFrame(rafId);
-    };
-  }, [text, active, delay, duration]);
-
-  return display;
-}
-
-function PillButton({ tone, title, strong, children, onClick, ariaLabel }) {
+function PillButton({ tone, title, strong, children, onClick }) {
   const isRed = tone === 'red';
   const shell = isRed
     ? {
@@ -162,16 +74,16 @@ function PillButton({ tone, title, strong, children, onClick, ariaLabel }) {
       onClick={onClick}
       className="group cursor-pointer rounded-2xl border-0 bg-transparent p-0 transition-all duration-200 hover:-translate-y-1 hover:brightness-110 active:translate-y-0.5 active:brightness-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-black"
       style={{ filter: shell.filter, perspective: '980px' }}
-      aria-label={ariaLabel ?? title}
+      aria-label={title}
     >
-      <div className="relative w-[min(100%,196px)] md:w-[min(100%,236px)]">
+      <div className="relative w-[min(100%,196px)]">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-3 -bottom-3 h-5 rounded-full blur-md transition-all duration-200 group-hover:-bottom-3.5"
           style={{ background: `linear-gradient(180deg, ${shell.baseShadow}, rgba(0,0,0,0))` }}
         />
         <div
-          className="relative flex flex-col items-center gap-1.5 md:gap-2 px-4 md:px-5 py-3.5 md:py-[1.15rem] rounded-2xl overflow-hidden transition-transform duration-200 group-hover:[transform:rotateX(11deg)_translateY(-2px)] group-active:[transform:rotateX(4deg)_translateY(1px)]"
+          className="relative flex flex-col items-center gap-1.5 px-4 py-3.5 rounded-2xl overflow-hidden transition-transform duration-200 group-hover:[transform:rotateX(11deg)_translateY(-2px)] group-active:[transform:rotateX(4deg)_translateY(1px)]"
           style={{
             background: shell.gradient,
             border: shell.border,
@@ -209,7 +121,7 @@ function PillButton({ tone, title, strong, children, onClick, ariaLabel }) {
             className="relative text-center text-white text-[10px] sm:text-[11px] leading-snug px-0.5"
             style={{ transform: 'translateZ(12px)' }}
           >
-            <strong className="font-semibold block mb-1 md:mb-1.5">{strong}</strong>
+            <strong className="font-semibold block mb-1">{strong}</strong>
             <span className="font-mono opacity-95 leading-relaxed">{children}</span>
           </span>
         </div>
@@ -218,12 +130,110 @@ function PillButton({ tone, title, strong, children, onClick, ariaLabel }) {
   );
 }
 
+/** Greek letters + digits for one-shot “decrypt” effect on the choice screen */
+const CIPHER_POOL =
+  'ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ0123456789';
+
+function cipherRandomChar() {
+  return CIPHER_POOL[Math.floor(Math.random() * CIPHER_POOL.length)];
+}
+
+function isCipherableChar(ch) {
+  return /[A-Za-z0-9]/.test(ch);
+}
+
+function textToCipher(text) {
+  return [...text]
+    .map((ch) => {
+      if (ch === '\n') return '\n';
+      if (!isCipherableChar(ch)) return ch;
+      return cipherRandomChar();
+    })
+    .join('');
+}
+
+/**
+ * After `delayMs` (once Framer has finished fading copy in), shows Greek/digit
+ * cipher briefly, then resolves left-to-order through cipherable characters to `children`.
+ */
+function CipherRevealText({ as: Comp = 'span', children, delayMs, className, style }) {
+  const finalText = String(children);
+  const [shown, setShown] = useState(finalText);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+
+    let tCipher;
+    let tDecode;
+    let decodeInterval;
+    let cancelled = false;
+
+    const indices = [];
+    for (let i = 0; i < finalText.length; i++) {
+      if (isCipherableChar(finalText[i])) indices.push(i);
+    }
+    const n = indices.length;
+    const holdMs = CHOICE_CIPHER_HOLD_MS;
+    const decodeMs = 820;
+    const perStep = n > 0 ? Math.max(22, Math.min(40, Math.floor(decodeMs / n))) : 40;
+
+    tCipher = setTimeout(() => {
+      if (cancelled) return;
+      setShown(textToCipher(finalText));
+
+      tDecode = setTimeout(() => {
+        if (cancelled) return;
+        let revealed = 0;
+        decodeInterval = setInterval(() => {
+          if (cancelled) return;
+          revealed += 1;
+          const unlocked = new Set(indices.slice(0, revealed));
+          setShown(
+            [...finalText]
+              .map((ch, i) => {
+                if (!isCipherableChar(ch)) return ch;
+                if (unlocked.has(i)) return finalText[i];
+                return cipherRandomChar();
+              })
+              .join('')
+          );
+          if (revealed >= n) {
+            clearInterval(decodeInterval);
+            setShown(finalText);
+          }
+        }, perStep);
+      }, holdMs);
+    }, delayMs);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(tCipher);
+      clearTimeout(tDecode);
+      clearInterval(decodeInterval);
+    };
+  }, [finalText, delayMs, reduceMotion]);
+
+  return (
+    <Comp className={className} style={style} aria-label={finalText}>
+      {shown}
+    </Comp>
+  );
+}
+
 const TRANSITION_MS = 8200;
 const PILL_LOADING_MS = 4000;
+/** Choice screen: hold cipher glyphs before decoding back to English */
+const CHOICE_CIPHER_HOLD_MS = 560;
+/** Stagger each block so the user catches every line (after intro motion ~1s) */
+const CHOICE_CIPHER_DELAY_STOIX = 1650;
+const CHOICE_CIPHER_DELAY_HEADING = 1780;
+const CHOICE_CIPHER_DELAY_BODY = 1910;
+const CHOICE_CIPHER_DELAY_FOOTER = 2040;
 const RED_PILL_LOADING_TEXT =
   "I'll show you how deep the rabbit hole goes";
 const BLUE_PILL_LOADING_TEXT =
-  "The story begins. You'll wake in your bed and believe whatever you want to be";
+  "The story begins. You'll wake up in your bed and believe whatever you want to be";
 
 const RAIN_PEAK_INTENSITY = STOIX_MATRIX_INTENSITY;
 const RAIN_PEAK_SPEED = STOIX_MATRIX_SPEED;
@@ -231,60 +241,19 @@ const RAIN_START_INTENSITY = 0.04;
 const RAIN_START_SPEED = 0.116;
 
 export default function IntroScreen() {
-  const startAtChoice = introShouldStartAtChoice();
-  const [phase, setPhase] = useState(() => (startAtChoice ? 'choice' : 'hello'));
+  const [phase, setPhase] = useState(() => getIntroInitialPhase());
   const [rainIntensity, setRainIntensity] = useState(() =>
-    startAtChoice ? STOIX_MATRIX_INTENSITY : RAIN_START_INTENSITY
+    getIntroInitialPhase() === 'choice' ? STOIX_MATRIX_INTENSITY : RAIN_START_INTENSITY
   );
   const [rainSpeed, setRainSpeed] = useState(() =>
-    startAtChoice ? STOIX_MATRIX_SPEED : RAIN_START_SPEED
+    getIntroInitialPhase() === 'choice' ? STOIX_MATRIX_SPEED : RAIN_START_SPEED
   );
-  const [rainOverlayOpacity, setRainOverlayOpacity] = useState(() => (startAtChoice ? 1 : 0));
+  const [rainOverlayOpacity, setRainOverlayOpacity] = useState(() =>
+    getIntroInitialPhase() === 'choice' ? 1 : 0
+  );
   /** Set when a pill is clicked; 4s gate before route change */
   const [pillLoading, setPillLoading] = useState(null);
   const navigate = useNavigate();
-
-  const choiceActive = phase === 'choice' && !pillLoading;
-  const cypherHeader = useCypherReveal(CHOICE_COPY.header, choiceActive, {
-    delay: 0,
-    duration: 1280,
-  });
-  const cypherHeadline = useCypherReveal(CHOICE_COPY.headline, choiceActive, {
-    delay: 220,
-    duration: 1380,
-  });
-  const cypherBlurb = useCypherReveal(CHOICE_COPY.blurb, choiceActive, {
-    delay: 440,
-    duration: 1880,
-  });
-  const cypherBlueTitle = useCypherReveal(CHOICE_COPY.blueTitle, choiceActive, {
-    delay: 660,
-    duration: 1060,
-  });
-  const cypherBlueStrong = useCypherReveal(CHOICE_COPY.blueStrong, choiceActive, {
-    delay: 780,
-    duration: 1000,
-  });
-  const cypherBlueBody = useCypherReveal(CHOICE_COPY.blueBody, choiceActive, {
-    delay: 940,
-    duration: 1560,
-  });
-  const cypherRedTitle = useCypherReveal(CHOICE_COPY.redTitle, choiceActive, {
-    delay: 720,
-    duration: 1060,
-  });
-  const cypherRedStrong = useCypherReveal(CHOICE_COPY.redStrong, choiceActive, {
-    delay: 840,
-    duration: 1000,
-  });
-  const cypherRedBody = useCypherReveal(CHOICE_COPY.redBody, choiceActive, {
-    delay: 1000,
-    duration: 1560,
-  });
-  const cypherFooter = useCypherReveal(CHOICE_COPY.footer, choiceActive, {
-    delay: 1180,
-    duration: 1780,
-  });
 
   const helloLine = 'Hello.';
   const { displayed: helloText, done: helloDone } = useTypewriter(helloLine, 180, phase === 'hello');
@@ -313,12 +282,6 @@ export default function IntroScreen() {
       return () => clearTimeout(t);
     }
   }, [phase, questionDone]);
-
-  useEffect(() => {
-    if (phase === 'choice') {
-      markIntroReachedChoice();
-    }
-  }, [phase]);
 
   useEffect(() => {
     if (phase !== 'transition') return;
@@ -361,12 +324,10 @@ export default function IntroScreen() {
   }, [pillLoading, navigate]);
 
   const handleRedPill = () => {
-    markIntroReachedChoice();
     setPillLoading('red');
   };
 
   const handleBluePill = () => {
-    markIntroReachedChoice();
     setPillLoading('blue');
   };
 
@@ -388,12 +349,14 @@ export default function IntroScreen() {
         </div>
       )}
 
-      <div className="fixed inset-0 flex items-center justify-center" style={{ zIndex: 20 }}>
+      {/* Full-viewport stack so AnimatePresence phases never sit side-by-side (flex-row flash). */}
+      <div className="fixed inset-0" style={{ zIndex: 20 }}>
+        <div className="relative h-full w-full">
         <AnimatePresence>
           {phase === 'hello' && (
             <motion.div
               key="hello"
-              className="text-center"
+              className="absolute inset-0 flex items-center justify-center text-center"
               exit={{ opacity: 0 }}
               transition={{ duration: 0.6 }}
             >
@@ -428,17 +391,17 @@ export default function IntroScreen() {
           {phase === 'question' && (
             <motion.div
               key="question"
-              className="text-center w-full max-w-[100vw] px-4 sm:px-6 flex justify-center"
+              className="absolute inset-0 flex items-center justify-center px-4 sm:px-8"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.5 }}
             >
+              <div className="w-full max-w-[100vw] flex justify-center overflow-x-auto [scrollbar-width:thin]">
               <p
-                className="font-mono leading-none whitespace-nowrap"
+                className="font-mono leading-relaxed whitespace-nowrap text-center"
                 style={{
-                  fontSize:
-                    'min(1.8rem, max(0.68rem, calc((100vw - 2.5rem) / 32)))',
+                  fontSize: 'clamp(1.1rem, 3vw, 1.8rem)',
                   color: '#00ff41',
                   textShadow: '0 0 12px #00ff4199, 0 0 30px #00ff4144',
                   letterSpacing: '0.04em',
@@ -460,6 +423,7 @@ export default function IntroScreen() {
                   />
                 )}
               </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -468,11 +432,12 @@ export default function IntroScreen() {
           {phase === 'choice' && !pillLoading && (
             <motion.div
               key="choice"
-              className="text-center max-w-4xl md:max-w-5xl lg:max-w-6xl px-6 sm:px-12 md:px-20 lg:px-28 py-4 md:py-10 lg:py-12 relative"
+              className="absolute inset-0 flex items-center justify-center overflow-y-auto py-8 px-6 sm:px-10"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
             >
+              <div className="relative text-center max-w-4xl w-full">
               <div
                 className="absolute inset-0 -z-10 rounded-3xl opacity-40 pointer-events-none"
                 style={{
@@ -482,52 +447,48 @@ export default function IntroScreen() {
                 aria-hidden
               />
 
-              <p className="font-mono text-xs sm:text-sm md:text-[0.8125rem] text-primary/90 tracking-widest mb-5 md:mb-8 mt-6 md:mt-4 drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
-                {cypherHeader}
+              <p className="font-mono text-xs sm:text-sm text-primary/90 tracking-widest mb-4 mt-6 drop-shadow-[0_0_12px_rgba(0,0,0,0.9)]">
+                <CipherRevealText as="span" delayMs={CHOICE_CIPHER_DELAY_STOIX}>
+                  [ STOIX // PROTOCOL SELECTION ]
+                </CipherRevealText>
               </p>
 
               <motion.h1
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.75 }}
-                className="font-mono text-xl sm:text-3xl lg:text-4xl text-glow mb-6 md:mb-10 lg:mb-12 leading-snug drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)]"
+                className="font-mono text-xl sm:text-3xl text-glow mb-4 leading-snug drop-shadow-[0_2px_16px_rgba(0,0,0,0.95)]"
               >
-                {cypherHeadline}
+                <CipherRevealText as="span" delayMs={CHOICE_CIPHER_DELAY_HEADING}>
+                  Which side are you on?
+                </CipherRevealText>
               </motion.h1>
 
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.75 }}
-                className="font-mono text-sm md:text-base text-muted-foreground mb-12 md:mb-16 lg:mb-20 max-w-xl md:max-w-2xl mx-auto leading-relaxed md:leading-[1.7] drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)] whitespace-pre-line"
+                className="font-mono text-sm mb-10 max-w-xl mx-auto leading-relaxed whitespace-pre-line drop-shadow-[0_1px_10px_rgba(0,0,0,0.95)]"
                 style={{ color: 'rgba(200,255,210,0.88)' }}
               >
-                {cypherBlurb}
+                <CipherRevealText
+                  as="span"
+                  delayMs={CHOICE_CIPHER_DELAY_BODY}
+                >{`Two paths diverge. One demands discipline. The other offers exploration.
+Choose with care — the path shapes the protocol.`}</CipherRevealText>
               </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55, duration: 0.75 }}
-                className="flex flex-col sm:flex-row items-center justify-center gap-16 sm:gap-24 md:gap-36 lg:gap-44 xl:gap-52 mb-12 md:mb-20 lg:mb-24"
+                className="flex flex-col sm:flex-row items-center justify-center gap-12 sm:gap-20 mb-10"
               >
-                <PillButton
-                  tone="blue"
-                  title={cypherBlueTitle}
-                  strong={cypherBlueStrong}
-                  ariaLabel="Blue pill: exploration, side quests and skill learning"
-                  onClick={handleBluePill}
-                >
-                  {cypherBlueBody}
+                <PillButton tone="blue" title="BLUE PILL" strong="Exploration." onClick={handleBluePill}>
+                  Side quests, skill learning, real-world discovery.
                 </PillButton>
-                <PillButton
-                  tone="red"
-                  title={cypherRedTitle}
-                  strong={cypherRedStrong}
-                  ariaLabel="Red pill: discipline and structured protocol toward a goal"
-                  onClick={handleRedPill}
-                >
-                  {cypherRedBody}
+                <PillButton tone="red" title="RED PILL" strong="Discipline." onClick={handleRedPill}>
+                  Structured protocol toward a specific goal.
                 </PillButton>
               </motion.div>
 
@@ -535,11 +496,14 @@ export default function IntroScreen() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.75, duration: 0.65 }}
-                className="font-mono text-xs md:text-sm max-w-md md:max-w-lg mx-auto mt-2 md:mt-6 lg:mt-8 drop-shadow-[0_1px_8px_rgba(0,0,0,0.95)]"
+                className="font-mono text-xs max-w-md mx-auto drop-shadow-[0_1px_8px_rgba(0,0,0,0.95)]"
                 style={{ color: 'rgba(180,255,190,0.75)' }}
               >
-                {cypherFooter}
+                <CipherRevealText as="span" delayMs={CHOICE_CIPHER_DELAY_FOOTER}>
+                  Your decision is not final. You can return and choose again at any time.
+                </CipherRevealText>
               </motion.p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -551,8 +515,7 @@ export default function IntroScreen() {
               role="status"
               aria-live="polite"
               aria-busy="true"
-              className="fixed inset-0 flex flex-col items-center justify-center gap-8 px-6 sm:px-10"
-              style={{ zIndex: 40 }}
+              className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-8 px-6 sm:px-10"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -563,11 +526,11 @@ export default function IntroScreen() {
                 aria-hidden
               />
               <p
-                className="relative font-mono text-center max-w-[min(100%,54rem)] leading-relaxed text-2xl sm:text-[1.6875rem] md:text-3xl"
+                className="relative font-mono text-center max-w-[min(100%,52rem)] leading-relaxed px-2 uppercase tracking-[0.08em]"
                 style={{
                   color: '#00ff41',
-                  letterSpacing: '0.04em',
                   textShadow: '0 0 14px #00ff4199, 0 0 36px #00ff4144',
+                  fontSize: 'clamp(1.5rem, 4.6vw, 1.875rem)',
                 }}
               >
                 {pillLoading === 'red' ? RED_PILL_LOADING_TEXT : BLUE_PILL_LOADING_TEXT}
@@ -598,6 +561,7 @@ export default function IntroScreen() {
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
     </div>
   );

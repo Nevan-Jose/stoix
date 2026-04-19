@@ -16,13 +16,19 @@ export default function IntenseRainTransition({ onComplete, duration = 3500 }) {
     const columns = Math.floor(canvas.width / fontSize);
 
     // All columns active, multiple streams per column
+    const rowSpan = canvas.height / fontSize;
     const streams = [];
     for (let i = 0; i < columns; i++) {
+      const dir = i % 2 === 0 ? 1 : -1;
       const streamCount = 1 + Math.floor(Math.random() * 3);
       for (let s = 0; s < streamCount; s++) {
         streams.push({
           col: i,
-          y: Math.random() * -(canvas.height / fontSize) * 2,
+          dir,
+          y:
+            dir > 0
+              ? Math.random() * -rowSpan * 2
+              : rowSpan + Math.random() * rowSpan * 0.85,
           speed: 0.8 + Math.random() * 2.5,
           length: 5 + Math.floor(Math.random() * 20),
         });
@@ -44,9 +50,10 @@ export default function IntenseRainTransition({ onComplete, duration = 3500 }) {
       for (const stream of streams) {
         const x = stream.col * fontSize;
         const headY = stream.y * fontSize;
+        const { dir } = stream;
 
         for (let j = 0; j < stream.length; j++) {
-          const charY = headY - j * fontSize;
+          const charY = headY - j * fontSize * dir;
           if (charY < 0 || charY > canvas.height) continue;
 
           const char = Math.random() > 0.5 ? '1' : '0';
@@ -64,10 +71,15 @@ export default function IntenseRainTransition({ onComplete, duration = 3500 }) {
           ctx.fillText(char, x, charY);
         }
 
-        stream.y += stream.speed;
+        stream.y += stream.speed * dir;
 
-        if (stream.y * fontSize > canvas.height + stream.length * fontSize) {
-          stream.y = Math.random() * -30;
+        if (dir > 0) {
+          if (stream.y * fontSize > canvas.height + stream.length * fontSize) {
+            stream.y = Math.random() * -30;
+            stream.speed = 0.8 + Math.random() * 2.5;
+          }
+        } else if (stream.y < -stream.length - 8) {
+          stream.y = rowSpan + Math.random() * 35;
           stream.speed = 0.8 + Math.random() * 2.5;
         }
       }

@@ -128,25 +128,25 @@ export default function GoalForm({ onSubmit, isLoading }) {
       transition={{ duration: 0.8, delay: 0.2 }}
       className="w-full max-w-xl mx-auto"
     >
-      <div className="relative z-20 border border-border border-glow rounded-lg p-6 sm:p-8 bg-card/90 backdrop-blur-sm shadow-[0_12px_40px_rgba(0,0,0,0.35)]">
-        <p className="font-mono text-xs text-primary/80 tracking-widest mb-2">
+      <div className="relative z-20 rounded-lg p-6 sm:p-8 bg-transparent border border-primary/55 shadow-[0_0_24px_hsla(120,100%,50%,0.12),inset_0_1px_0_rgba(0,255,65,0.06)]">
+        <p className="font-mono text-xs text-primary tracking-widest mb-2">
           [ PROTOCOL INITIALIZATION ]
         </p>
-        <h2 className="text-2xl sm:text-3xl font-mono text-glow mb-2">
+        <h2 className="text-2xl sm:text-3xl font-mono text-glow mb-2 text-primary">
           What is your mission?
         </h2>
-        <p className="text-muted-foreground font-mono text-sm mb-8">
+        <p className="text-primary/75 font-mono text-sm mb-8">
           State your objective and timeline. STOIX builds a sequenced daily protocol toward it.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-6 pb-1">
           {/* Goal input with paste + drag support */}
           <div className="space-y-2">
-            <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
+            <Label className="font-mono text-primary text-sm tracking-wider uppercase">
               {'> '}Target objective
             </Label>
             <div
-              className={`relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 ring-offset-background rounded-md' : ''}`}
+              className={`relative ${isDragging ? 'ring-2 ring-primary ring-offset-2 ring-offset-transparent rounded-md' : ''}`}
               onDragEnter={() => setIsDragging(true)}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setIsDragging(false); }}
@@ -157,7 +157,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 onChange={(e) => setGoal(e.target.value)}
                 onPaste={handlePaste}
                 placeholder="e.g. Learn to play guitar fluently..."
-                className="bg-background border-border font-mono text-foreground placeholder:text-muted-foreground/50 min-h-[100px] resize-none focus:border-primary focus:ring-primary/30 pr-12"
+                className="bg-transparent border-primary/45 font-mono text-primary placeholder:text-primary/35 min-h-[100px] resize-none focus:border-primary focus:ring-primary/25 pr-12"
                 disabled={isLoading}
               />
               {/* Paperclip attach button */}
@@ -172,20 +172,20 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 <Paperclip className="w-4 h-4" />
               </button>
             </div>
-            <p className="text-xs font-mono text-muted-foreground">
+            <p className="text-xs font-mono text-primary/60">
               Optional: paste or drop your calendar screenshot to schedule tasks around your real availability.
             </p>
           </div>
 
           {/* Calendar upload tabs */}
           <div className="space-y-3">
-            <Label className="font-mono text-foreground text-sm tracking-wider uppercase flex items-center gap-2">
+            <Label className="font-mono text-primary text-sm tracking-wider uppercase flex items-center gap-2">
               <Calendar className="w-3.5 h-3.5" />
               Calendar (optional)
             </Label>
 
             {/* Tab switcher */}
-            <div className="flex gap-1 bg-background border border-border rounded p-1 w-fit">
+            <div className="flex gap-1 bg-transparent border border-primary/40 rounded p-1 w-fit">
               {[
                 { key: 'images', icon: <Image className="w-3 h-3" />, label: 'Images' },
                 { key: 'ics',    icon: <Calendar className="w-3 h-3" />, label: '.ics' },
@@ -198,7 +198,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono transition-all duration-200 active:scale-[0.98] border ${
                     calTab === key
                       ? 'bg-gradient-to-b from-primary/28 to-primary/10 text-primary border-primary/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_18px_hsla(120,100%,50%,0.14)]'
-                      : 'border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/35 hover:border-border/60'
+                      : 'border-transparent text-primary/55 hover:text-primary hover:bg-primary/5 hover:border-primary/35'
                   }`}
                   disabled={isLoading}
                 >
@@ -213,7 +213,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 <button
                   type="button"
                   onClick={() => imageInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-border/90 hover:border-primary/55 rounded-xl p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200 bg-card/20 hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
+                  className="w-full border-2 border-dashed border-primary/45 hover:border-primary rounded-xl p-4 text-center text-xs font-mono text-primary/70 hover:text-primary transition-all duration-200 bg-transparent hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(0,255,65,0.06)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
                   disabled={isLoading || calImages.length >= 5}
                 >
                   <Paperclip className="w-4 h-4 mx-auto mb-1 opacity-60" />
@@ -224,7 +224,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 {calImages.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {calImages.map((img, idx) => (
-                      <div key={idx} className="relative w-16 h-16 rounded border border-border overflow-hidden bg-background">
+                      <div key={idx} className="relative w-16 h-16 rounded border border-primary/40 overflow-hidden bg-transparent">
                         <img src={img.dataURL} alt={img.name} className="w-full h-full object-cover" />
                         <button
                           type="button"
@@ -248,7 +248,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
                   <button
                     type="button"
                     onClick={() => icsInputRef.current?.click()}
-                    className="w-full border-2 border-dashed border-border/90 hover:border-primary/55 rounded-xl p-4 text-center text-xs font-mono text-muted-foreground hover:text-foreground transition-all duration-200 bg-card/20 hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
+                    className="w-full border-2 border-dashed border-primary/45 hover:border-primary rounded-xl p-4 text-center text-xs font-mono text-primary/70 hover:text-primary transition-all duration-200 bg-transparent hover:bg-primary/5 shadow-[inset_0_1px_0_rgba(0,255,65,0.06)] hover:shadow-[0_0_20px_hsla(120,100%,50%,0.08)] active:scale-[0.99] disabled:opacity-50"
                     disabled={isLoading}
                   >
                     <Calendar className="w-4 h-4 mx-auto mb-1 opacity-60" />
@@ -257,10 +257,10 @@ export default function GoalForm({ onSubmit, isLoading }) {
                     <span className="opacity-60">Exported from Apple / Google / Outlook Calendar</span>
                   </button>
                 ) : (
-                  <div className="flex items-center gap-2 p-3 border border-primary/30 bg-primary/5 rounded text-xs font-mono">
+                  <div className="flex items-center gap-2 p-3 border border-primary/45 bg-transparent rounded text-xs font-mono">
                     <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
-                    <span className="flex-1 truncate text-foreground">{calIcs.name}</span>
-                    <span className="text-muted-foreground">{Math.max(1, Math.round(calIcs.size / 1024))} KB</span>
+                    <span className="flex-1 truncate text-primary">{calIcs.name}</span>
+                    <span className="text-primary/60">{Math.max(1, Math.round(calIcs.size / 1024))} KB</span>
                     <button type="button" onClick={removeICS} className="rounded-lg p-1 text-muted-foreground transition-all duration-200 hover:text-red-400 hover:bg-red-500/10 active:scale-95" aria-label="Remove">
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -271,7 +271,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
 
             {/* Skip tab */}
             {calTab === 'none' && (
-              <p className="text-xs font-mono text-muted-foreground border border-border/50 rounded p-3">
+              <p className="text-xs font-mono text-primary/65 border border-primary/35 rounded p-3 bg-transparent">
                 No calendar provided. All tasks will be scheduled at 09:00 by default.
               </p>
             )}
@@ -282,8 +282,8 @@ export default function GoalForm({ onSubmit, isLoading }) {
           <input ref={icsInputRef}   type="file" accept=".ics,text/calendar" hidden onChange={handleICSInput} />
 
           {hasAttachments && (
-            <div className="space-y-2 border border-primary/25 rounded-lg p-4 bg-primary/5">
-              <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
+            <div className="space-y-2 border border-primary/45 rounded-lg p-4 bg-transparent">
+              <Label className="font-mono text-primary text-sm tracking-wider uppercase">
                 {'> '}Preferred daily task time
               </Label>
               <Input
@@ -291,13 +291,13 @@ export default function GoalForm({ onSubmit, isLoading }) {
                 step={60}
                 value={preferredStartTime}
                 onChange={(e) => setPreferredStartTime(e.target.value || '09:00')}
-                className="bg-background border-border font-mono text-foreground max-w-[200px] focus:border-primary focus:ring-primary/30"
+                className="bg-transparent border-primary/45 font-mono text-primary max-w-[200px] focus:border-primary focus:ring-primary/25"
                 disabled={isLoading}
               />
-              <p className="text-xs font-mono text-muted-foreground leading-relaxed">
+              <p className="text-xs font-mono text-primary/65 leading-relaxed">
                 STOIX tries to use this same clock time on every day your protocol runs. If your calendar blocks that
                 window on specific weekdays only, the model picks the most practical alternative on{' '}
-                <span className="text-foreground/90">those days only</span> (for example right after a class ends),
+                <span className="text-primary">those days only</span> (for example right after a class ends),
                 without shifting unrelated days.
               </p>
             </div>
@@ -305,7 +305,7 @@ export default function GoalForm({ onSubmit, isLoading }) {
 
           {/* Days */}
           <div className="space-y-2">
-            <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
+            <Label className="font-mono text-primary text-sm tracking-wider uppercase">
               {'> '}Time limit (days)
             </Label>
             <Input
@@ -315,17 +315,17 @@ export default function GoalForm({ onSubmit, isLoading }) {
               value={days}
               onChange={(e) => setDays(e.target.value)}
               placeholder="e.g. 90"
-              className="bg-background border-border font-mono text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/30"
+              className="bg-transparent border-primary/45 font-mono text-primary placeholder:text-primary/35 focus:border-primary focus:ring-primary/25"
               disabled={isLoading}
             />
-            <p className="text-xs font-mono text-muted-foreground">
+            <p className="text-xs font-mono text-primary/60">
               Minimum 7 days. Maximum 365 days.
             </p>
           </div>
 
           {/* Daily minutes */}
           <div className="space-y-2">
-            <Label className="font-mono text-foreground text-sm tracking-wider uppercase">
+            <Label className="font-mono text-primary text-sm tracking-wider uppercase">
               {'> '}Daily time budget (minutes)
             </Label>
             <Input
@@ -335,10 +335,10 @@ export default function GoalForm({ onSubmit, isLoading }) {
               value={dailyMinutes}
               onChange={(e) => setDailyMinutes(e.target.value)}
               placeholder="e.g. 30"
-              className="bg-background border-border font-mono text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/30"
+              className="bg-transparent border-primary/45 font-mono text-primary placeholder:text-primary/35 focus:border-primary focus:ring-primary/25"
               disabled={isLoading}
             />
-            <p className="text-xs font-mono text-muted-foreground">
+            <p className="text-xs font-mono text-primary/60">
               Each micro-task must fit in this window (5–60 minutes).
             </p>
           </div>

@@ -123,21 +123,3 @@
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
-
-@keyframes scanline {
-  0% { transform: translateY(-100%); }
-  100% { transform: translateY(100vh); }
-}
-
-.scanline-overlay::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: hsl(120 100% 50% / 0.05);
-  z-index: 50;
-  animation: scanline 4s linear infinite;
-  pointer-events: none;
-}

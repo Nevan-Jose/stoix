@@ -1564,6 +1564,12 @@ def _get_mock_skills(interest):
     return SKILL_PATH_MOCK[key]
 
 
+def _norm_request_path(path: str) -> str:
+    """Strip query string and trailing slash so /api/x and /api/x?y=1 match handlers."""
+    p = (path or "").split("?", 1)[0].rstrip("/")
+    return p or "/"
+
+
 # ---------- HTTP server ----------
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, fmt, *args):
@@ -1586,7 +1592,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path == "/api/health":
+        if _norm_request_path(self.path) == "/api/health":
             or_cfg = use_openrouter()
             oa = ollama_reachable()
             return self._send_json(
@@ -1606,7 +1612,7 @@ class Handler(BaseHTTPRequestHandler):
                 },
             )
 
-        url_path = self.path.split("?", 1)[0]
+        url_path = _norm_request_path(self.path)
         if url_path.startswith("/api/"):
             self.send_error(404, "Not found")
             return
@@ -1637,14 +1643,17 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if self.path == "/api/generate-tasks":
+        path = _norm_request_path(self.path)
+        if path == "/api/generate-tasks":
             return self._handle_generate_tasks()
-        elif self.path == "/api/blue-pill":
+        elif path == "/api/blue-pill":
             return self._handle_blue_pill()
-        elif self.path == "/api/skill-path":
+        elif path == "/api/skill-path":
             return self._handle_skill_path()
         else:
-            self.send_error(404, "Not found")
+            return self._send_json(
+                404, {"ok": False, "error": f"Unknown API route: POST {path}"}
+            )
 
     def _handle_generate_tasks(self):
         length = int(self.headers.get("Content-Length") or 0)

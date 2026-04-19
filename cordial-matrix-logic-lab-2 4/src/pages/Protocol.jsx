@@ -61,14 +61,35 @@ export default function Protocol() {
         }),
       });
 
-      let data;
-      try { data = await resp.json(); } catch { data = null; }
+      const rawText = await resp.text();
+      let data = null;
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          data = null;
+        }
+      }
 
       if (!resp.ok) {
+        let detail = data?.error;
+        if (!detail) {
+          if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+            detail =
+              'Cannot reach STOIX on port 8787. In a separate terminal run: python3 server.py (from the repo root). If you use npm run dev, start the Python server first so Vite can proxy /api.';
+          } else if (resp.status === 404) {
+            detail =
+              'POST /api/generate-tasks was not found. Use server.py for the API, or set VITE_STOIX_API_ORIGIN to your backend URL.';
+          } else if (rawText && rawText.length < 400 && !rawText.trim().startsWith('<')) {
+            detail = rawText.trim();
+          } else {
+            detail = `HTTP ${resp.status}. Check the terminal running server.py for tracebacks.`;
+          }
+        }
         toast({
           variant:     'destructive',
           title:       'Protocol engine error',
-          description: data?.error || `Server returned ${resp.status}.`,
+          description: detail,
         });
         setIsLoading(false);
         return;
@@ -103,7 +124,7 @@ export default function Protocol() {
   };
 
   return (
-    <div className="min-h-screen bg-background relative scanline-overlay">
+    <div className="min-h-screen bg-transparent relative">
       <MatrixRainBg intensity={STOIX_MATRIX_INTENSITY} speed={STOIX_MATRIX_SPEED} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
@@ -119,7 +140,7 @@ export default function Protocol() {
               variant="outline"
               size="icon"
               onClick={() => goBackNavigate(navigate)}
-              className="shrink-0 -ml-1 mt-0.5 text-muted-foreground hover:text-foreground"
+              className="shrink-0 -ml-1 mt-0.5 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:text-primary backdrop-blur-none"
               aria-label="Back"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -128,7 +149,7 @@ export default function Protocol() {
               <h1 className="font-mono text-xl sm:text-2xl text-glow-strong tracking-widest">
                 STOIX // RED PILL
               </h1>
-              <p className="font-mono text-xs text-muted-foreground mt-1 tracking-wider">
+              <p className="font-mono text-xs text-primary/70 mt-1 tracking-wider">
                 Evidence-style protocol — cloud open models (OpenRouter) or Ollama + daily micro-tasks.
               </p>
             </div>
@@ -149,7 +170,7 @@ export default function Protocol() {
         </main>
 
         <footer className="py-4 px-6 text-center">
-          <p className="font-mono text-xs text-muted-foreground/50">
+          <p className="font-mono text-xs text-primary/45">
             The path shapes the protocol.
           </p>
         </footer>

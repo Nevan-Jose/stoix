@@ -17,22 +17,22 @@ function QuestCard({ quest, index }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08, duration: 0.45 }}
-      className="border border-border rounded-lg p-4 bg-card/80 backdrop-blur-sm hover:border-blue-500/40 transition-colors cursor-pointer"
+      className="rounded-lg p-4 bg-transparent border border-sky-400/55 hover:border-sky-400 transition-colors cursor-pointer shadow-[0_0_18px_rgba(56,189,248,0.08)]"
       onClick={() => setExpanded((v) => !v)}
     >
       <div className="flex items-start gap-3">
         <span className="text-2xl shrink-0 mt-0.5">{quest.vibe}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-mono text-[10px] text-blue-400/70 tracking-widest uppercase">{quest.type}</p>
-            <span className="text-muted-foreground/30 text-xs">·</span>
-            <p className="font-mono text-[10px] text-muted-foreground">
+            <p className="font-mono text-[10px] text-sky-300 tracking-widest uppercase">{quest.type}</p>
+            <span className="text-sky-400/40 text-xs">·</span>
+            <p className="font-mono text-[10px] text-sky-300/85">
               ${quest.estimatedCost} · {quest.totalTimeMinutes} min total
             </p>
           </div>
-          <h3 className="font-mono text-sm text-foreground font-semibold mt-0.5">{quest.title}</h3>
-          <p className="font-mono text-xs text-blue-300/80 mt-0.5">{quest.place}</p>
-          <p className="font-mono text-xs text-muted-foreground mt-1.5 leading-relaxed">{quest.whyThisFits}</p>
+          <h3 className="font-mono text-sm text-sky-100 font-semibold mt-0.5">{quest.title}</h3>
+          <p className="font-mono text-xs text-sky-300 mt-0.5">{quest.place}</p>
+          <p className="font-mono text-xs text-sky-200/90 mt-1.5 leading-relaxed">{quest.whyThisFits}</p>
 
           <AnimatePresence>
             {expanded && (
@@ -43,20 +43,20 @@ function QuestCard({ quest, index }) {
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
-                <p className="font-mono text-xs text-muted-foreground mt-3 leading-relaxed border-t border-border/40 pt-3">
+                <p className="font-mono text-xs text-sky-200/85 mt-3 leading-relaxed border-t border-sky-400/35 pt-3">
                   {quest.description}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {(quest.tags || []).map((tag) => (
                     <span
                       key={tag}
-                      className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400/80 border border-blue-500/20"
+                      className="font-mono text-[9px] px-2 py-0.5 rounded-full bg-transparent text-sky-300 border border-sky-400/45"
                     >
                       {tag}
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-4 mt-2 font-mono text-[10px] text-muted-foreground/70">
+                <div className="flex gap-4 mt-2 font-mono text-[10px] text-sky-300/75">
                   <span>{quest.distanceMiles?.toFixed?.(1) ?? quest.distanceMiles} mi</span>
                   <span>{quest.travelTimeMinutes} min travel</span>
                   <span>{quest.activityDurationMinutes} min activity</span>
@@ -65,7 +65,7 @@ function QuestCard({ quest, index }) {
             )}
           </AnimatePresence>
 
-          <p className="font-mono text-[10px] text-blue-500/50 mt-2">
+          <p className="font-mono text-[10px] text-sky-400/70 mt-2">
             {expanded ? '[ collapse ]' : '[ tap to expand ]'}
           </p>
         </div>
@@ -81,24 +81,24 @@ function SkillPathCard({ skill, index }) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1, duration: 0.45 }}
-      className="border border-border rounded-lg p-4 bg-card/80 backdrop-blur-sm hover:border-blue-500/40 transition-colors"
+      className="rounded-lg p-4 bg-transparent border border-sky-400/55 hover:border-sky-400 transition-colors shadow-[0_0_18px_rgba(56,189,248,0.08)]"
     >
       <div className="flex items-start gap-3">
         <span className="text-2xl shrink-0 mt-0.5">{skill.emoji}</span>
         <div className="flex-1 min-w-0">
-          <p className="font-mono text-[10px] text-blue-400/70 tracking-widest uppercase">{skill.category}</p>
-          <h3 className="font-mono text-sm text-foreground font-semibold mt-0.5">{skill.title}</h3>
-          <div className="flex gap-2 mt-1 font-mono text-[10px] text-muted-foreground">
+          <p className="font-mono text-[10px] text-sky-300 tracking-widest uppercase">{skill.category}</p>
+          <h3 className="font-mono text-sm text-sky-100 font-semibold mt-0.5">{skill.title}</h3>
+          <div className="flex gap-2 mt-1 font-mono text-[10px] text-sky-300/85">
             <span>{skill.timeRequired}</span>
             <span>·</span>
             <span>{skill.cost}</span>
           </div>
-          <p className="font-mono text-xs text-muted-foreground mt-1.5 leading-relaxed">{skill.whyThisFits}</p>
+          <p className="font-mono text-xs text-sky-200/90 mt-1.5 leading-relaxed">{skill.whyThisFits}</p>
 
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="mt-2 rounded-lg px-2 py-1 font-mono text-[10px] text-blue-400/75 transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-300 hover:shadow-[0_0_14px_rgba(56,189,248,0.15)] active:scale-[0.98]"
+            className="mt-2 rounded-lg px-2 py-1 font-mono text-[10px] text-sky-300 border border-transparent transition-all duration-200 hover:bg-sky-400/10 hover:border-sky-400/40 hover:shadow-[0_0_14px_rgba(56,189,248,0.15)] active:scale-[0.98]"
           >
             {expanded ? '[ hide plan ]' : '[ view session plan + milestones ]'}
           </button>
@@ -112,35 +112,35 @@ function SkillPathCard({ skill, index }) {
                 transition={{ duration: 0.25 }}
                 className="overflow-hidden"
               >
-                <div className="mt-3 border-t border-border/40 pt-3">
-                  <p className="font-mono text-[10px] text-blue-400/70 tracking-widest uppercase mb-2">
+                <div className="mt-3 border-t border-sky-400/35 pt-3">
+                  <p className="font-mono text-[10px] text-sky-300 tracking-widest uppercase mb-2">
                     Today&apos;s Session
                   </p>
                   <div className="space-y-1.5">
                     {(skill.sessionPlan || []).map((s) => (
                       <div key={s.step} className="flex gap-2">
-                        <span className="font-mono text-[10px] text-blue-500/50 shrink-0 mt-0.5">{s.step}.</span>
-                        <span className="font-mono text-xs text-foreground/80">
+                        <span className="font-mono text-[10px] text-sky-400/70 shrink-0 mt-0.5">{s.step}.</span>
+                        <span className="font-mono text-xs text-sky-100/95">
                           {s.action}
-                          <span className="text-muted-foreground ml-1.5">— {s.duration}</span>
+                          <span className="text-sky-300/80 ml-1.5">— {s.duration}</span>
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="mt-3 border-t border-border/40 pt-3">
-                  <p className="font-mono text-[10px] text-blue-400/70 tracking-widest uppercase mb-2">
+                <div className="mt-3 border-t border-sky-400/35 pt-3">
+                  <p className="font-mono text-[10px] text-sky-300 tracking-widest uppercase mb-2">
                     Level-Up Path
                   </p>
                   <div className="space-y-1.5">
                     {(skill.levelUpPath || []).map((m) => (
                       <div key={m.milestone} className="flex gap-2">
-                        <span className="font-mono text-[10px] text-blue-500/50 shrink-0 mt-0.5">
+                        <span className="font-mono text-[10px] text-sky-400/70 shrink-0 mt-0.5">
                           M{m.milestone}
                         </span>
-                        <span className="font-mono text-xs text-foreground/80">
+                        <span className="font-mono text-xs text-sky-100/95">
                           {m.goal}
-                          <span className="text-muted-foreground ml-1.5">— {m.timeframe}</span>
+                          <span className="text-sky-300/80 ml-1.5">— {m.timeframe}</span>
                         </span>
                       </div>
                     ))}
@@ -158,19 +158,19 @@ function SkillPathCard({ skill, index }) {
 function SkillRoadmapCard({ skill }) {
   if (!skill?.skill) return null;
   return (
-    <div className="border border-blue-500/30 rounded-lg p-4 bg-blue-500/5 mt-4">
-      <p className="font-mono text-[10px] text-blue-400/70 tracking-widest uppercase mb-1">
+    <div className="rounded-lg p-4 bg-transparent border border-sky-400/55 mt-4 shadow-[0_0_18px_rgba(56,189,248,0.08)]">
+      <p className="font-mono text-[10px] text-sky-300 tracking-widest uppercase mb-1">
         Skill Suggestion
       </p>
-      <h3 className="font-mono text-sm text-foreground font-semibold">{skill.skill}</h3>
-      <p className="font-mono text-xs text-muted-foreground mt-1 leading-relaxed">{skill.tagline}</p>
+      <h3 className="font-mono text-sm text-sky-100 font-semibold">{skill.skill}</h3>
+      <p className="font-mono text-xs text-sky-200/90 mt-1 leading-relaxed">{skill.tagline}</p>
       <div className="mt-3 space-y-1.5">
         {(skill.steps || []).map((s) => (
           <div key={s.step} className="flex gap-2">
-            <span className="font-mono text-[10px] text-blue-500/50 shrink-0 mt-0.5">{s.step}.</span>
-            <span className="font-mono text-xs text-foreground/80">
+            <span className="font-mono text-[10px] text-sky-400/70 shrink-0 mt-0.5">{s.step}.</span>
+            <span className="font-mono text-xs text-sky-100/95">
               {s.action}
-              <span className="text-muted-foreground ml-1.5">— {s.time}</span>
+              <span className="text-sky-300/80 ml-1.5">— {s.time}</span>
             </span>
           </div>
         ))}
@@ -201,12 +201,12 @@ function SideQuestsForm({ onSubmit, isLoading }) {
   };
 
   const inputClass =
-    'bg-background border-border font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-blue-500/50 focus:ring-blue-500/20';
+    'bg-transparent border-sky-400/50 font-mono text-sm text-sky-100 placeholder:text-sky-400/45 focus:border-sky-400 focus:ring-sky-400/25';
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-1.5">
-        <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+        <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
           <MapPin className="w-3 h-3" /> Location
         </Label>
         <Input
@@ -220,7 +220,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+          <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
             <Clock className="w-3 h-3" /> Time (min)
           </Label>
           <Input
@@ -235,7 +235,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+          <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
             <DollarSign className="w-3 h-3" /> Budget ($)
           </Label>
           <Input
@@ -253,7 +253,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+          <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
             <Compass className="w-3 h-3" /> Max Dist (mi)
           </Label>
           <Input
@@ -269,7 +269,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
           />
         </div>
         <div className="space-y-1.5">
-          <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase">Mode</Label>
+          <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase">Mode</Label>
           <div className="flex gap-1 h-9">
             {['solo', 'social'].map((m) => (
               <button
@@ -280,7 +280,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
                 className={`flex-1 rounded-lg border font-mono text-xs transition-all duration-200 active:scale-[0.98] ${
                   mode === m
                     ? 'border-sky-400/50 bg-gradient-to-b from-sky-500/25 to-blue-600/15 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_16px_rgba(56,189,248,0.18)]'
-                    : 'border-border/80 bg-background/80 text-muted-foreground hover:border-sky-500/25 hover:text-foreground hover:bg-blue-500/5'
+                    : 'border-sky-400/40 bg-transparent text-sky-300/80 hover:border-sky-400/70 hover:text-sky-100 hover:bg-sky-400/5'
                 }`}
               >
                 {m}
@@ -291,7 +291,7 @@ function SideQuestsForm({ onSubmit, isLoading }) {
       </div>
 
       <div className="space-y-1.5">
-        <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+        <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
           <Target className="w-3 h-3" /> Interest / Vibe
         </Label>
         <Input
@@ -333,17 +333,17 @@ function SkillForm({ onSubmit, isLoading }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-1.5">
-        <Label className="font-mono text-xs text-foreground/60 tracking-widest uppercase flex items-center gap-1.5">
+        <Label className="font-mono text-xs text-sky-300 tracking-widest uppercase flex items-center gap-1.5">
           <Target className="w-3 h-3" /> What do you want to learn?
         </Label>
         <Input
           value={interest}
           onChange={(e) => setInterest(e.target.value)}
           placeholder="e.g. music, fitness, coding, cooking..."
-          className="bg-background border-border font-mono text-sm text-foreground placeholder:text-muted-foreground/40 focus:border-blue-500/50 focus:ring-blue-500/20"
+          className="bg-transparent border-sky-400/50 font-mono text-sm text-sky-100 placeholder:text-sky-400/45 focus:border-sky-400 focus:ring-sky-400/25"
           disabled={isLoading}
         />
-        <p className="font-mono text-[11px] text-muted-foreground leading-relaxed">
+        <p className="font-mono text-[11px] text-sky-200/85 leading-relaxed">
           You&apos;ll get 3 skills you can start today, each with a session plan and a level-up path.
         </p>
       </div>
@@ -446,7 +446,7 @@ export default function BluePill() {
   const showForms = !quests && !skills;
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-transparent relative">
       <MatrixRainBg intensity={STOIX_MATRIX_INTENSITY} speed={STOIX_MATRIX_SPEED} />
 
       <div className="relative z-10 min-h-screen flex flex-col">
@@ -462,7 +462,7 @@ export default function BluePill() {
             variant="outline"
             size="icon"
             onClick={() => goBackNavigate(navigate)}
-            className="shrink-0 text-muted-foreground hover:text-foreground"
+            className="shrink-0 border-sky-400/50 bg-transparent text-sky-200 hover:bg-sky-400/10 hover:text-sky-50 backdrop-blur-none"
             aria-label="Back"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -474,7 +474,7 @@ export default function BluePill() {
             >
               STOIX // BLUE PILL
             </h1>
-            <p className="font-mono text-xs text-muted-foreground mt-0.5 tracking-wider">
+            <p className="font-mono text-xs text-sky-300/90 mt-0.5 tracking-wider">
               Side quests &amp; skill learning — curated for your time and place.
             </p>
           </div>
@@ -489,7 +489,7 @@ export default function BluePill() {
           >
             {/* Tab switcher — only shown on forms */}
             {showForms && (
-              <div className="flex gap-1 bg-card/60 border border-border rounded-lg p-1 mb-5 w-fit">
+              <div className="flex gap-1 bg-transparent border border-sky-400/50 rounded-lg p-1 mb-5 w-fit">
                 {[
                   { key: 'quests', label: '\ud83d\uddfa\ufe0f Side Quests' },
                   { key: 'skills', label: '\ud83d\udcda Skill Path' },
@@ -501,7 +501,7 @@ export default function BluePill() {
                     className={`rounded-lg px-4 py-2 font-mono text-xs transition-all duration-200 active:scale-[0.98] border ${
                       activeTab === key
                         ? 'border-sky-400/45 bg-gradient-to-b from-sky-500/22 to-blue-700/12 text-sky-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.1),0_0_18px_rgba(56,189,248,0.16)]'
-                        : 'border-transparent text-muted-foreground hover:border-sky-500/20 hover:bg-blue-500/5 hover:text-foreground'
+                        : 'border-transparent text-sky-300/75 hover:border-sky-400/45 hover:bg-sky-400/5 hover:text-sky-100'
                     }`}
                   >
                     {label}
@@ -512,14 +512,14 @@ export default function BluePill() {
 
             {/* Side quests form */}
             {activeTab === 'quests' && !quests && (
-              <div className="border border-border rounded-lg p-6 sm:p-8 bg-card/80 backdrop-blur-sm">
-                <p className="font-mono text-[10px] text-blue-400/70 tracking-widest mb-2">
+              <div className="rounded-lg p-6 sm:p-8 bg-transparent border border-sky-400/55 shadow-[0_0_22px_rgba(56,189,248,0.12)]">
+                <p className="font-mono text-[10px] text-sky-300 tracking-widest mb-2">
                   [ SIDE QUEST FINDER ]
                 </p>
-                <h2 className="font-mono text-xl sm:text-2xl text-foreground mb-1">
+                <h2 className="font-mono text-xl sm:text-2xl text-sky-100 mb-1">
                   Where are you?
                 </h2>
-                <p className="font-mono text-sm text-muted-foreground mb-6">
+                <p className="font-mono text-sm text-sky-200/90 mb-6">
                   Tell us your time, budget, and vibe. We&apos;ll find 5 real things to do near you.
                 </p>
                 <SideQuestsForm onSubmit={handleQuestSubmit} isLoading={isLoading} />
@@ -530,13 +530,13 @@ export default function BluePill() {
             {activeTab === 'quests' && quests && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-mono text-[10px] text-blue-400/70 tracking-widest">
+                  <p className="font-mono text-[10px] text-sky-300 tracking-widest">
                     [ {quests.length} QUESTS FOUND ]
                   </p>
                   <button
                     type="button"
                     onClick={() => { setQuests(null); setQuestSkill(null); }}
-                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-muted-foreground transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
+                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-sky-300/85 border border-transparent transition-all duration-200 hover:bg-sky-400/10 hover:border-sky-400/35 hover:text-sky-100 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
                   >
                     [ new search ]
                   </button>
@@ -552,14 +552,14 @@ export default function BluePill() {
 
             {/* Skill path form */}
             {activeTab === 'skills' && !skills && (
-              <div className="border border-border rounded-lg p-6 sm:p-8 bg-card/80 backdrop-blur-sm">
-                <p className="font-mono text-[10px] text-blue-400/70 tracking-widest mb-2">
+              <div className="rounded-lg p-6 sm:p-8 bg-transparent border border-sky-400/55 shadow-[0_0_22px_rgba(56,189,248,0.12)]">
+                <p className="font-mono text-[10px] text-sky-300 tracking-widest mb-2">
                   [ SKILL PATH GENERATOR ]
                 </p>
-                <h2 className="font-mono text-xl sm:text-2xl text-foreground mb-1">
+                <h2 className="font-mono text-xl sm:text-2xl text-sky-100 mb-1">
                   What do you want to learn?
                 </h2>
-                <p className="font-mono text-sm text-muted-foreground mb-6">
+                <p className="font-mono text-sm text-sky-200/90 mb-6">
                   Pick any interest. Get 3 skills you can start today with a session plan and level-up path.
                 </p>
                 <SkillForm onSubmit={handleSkillSubmit} isLoading={isLoading} />
@@ -570,13 +570,13 @@ export default function BluePill() {
             {activeTab === 'skills' && skills && (
               <div>
                 <div className="flex items-center justify-between mb-4">
-                  <p className="font-mono text-[10px] text-blue-400/70 tracking-widest">
+                  <p className="font-mono text-[10px] text-sky-300 tracking-widest">
                     [ {skills.length} SKILLS UNLOCKED ]
                   </p>
                   <button
                     type="button"
                     onClick={() => setSkills(null)}
-                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-muted-foreground transition-all duration-200 hover:bg-blue-500/10 hover:text-sky-200 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
+                    className="rounded-lg px-2 py-1 font-mono text-[10px] text-sky-300/85 border border-transparent transition-all duration-200 hover:bg-sky-400/10 hover:border-sky-400/35 hover:text-sky-100 hover:shadow-[0_0_12px_rgba(56,189,248,0.12)] active:scale-[0.98]"
                   >
                     [ new search ]
                   </button>
@@ -592,7 +592,7 @@ export default function BluePill() {
         </main>
 
         <footer className="py-4 px-6 text-center">
-          <p className="font-mono text-xs text-muted-foreground/50">The path shapes the protocol.</p>
+          <p className="font-mono text-xs text-sky-400/45">The path shapes the protocol.</p>
         </footer>
       </div>
     </div>

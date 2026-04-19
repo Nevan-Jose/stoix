@@ -47,31 +47,37 @@ export default function MatrixRainBg(props) {
     const fontSize = thinBinary ? 13 : 15;
     const fontCss = `300 ${fontSize}px "Share Tech Mono", "VT323", monospace`;
     // Tighter horizontal step than glyph width → more columns / more drops (slight overlap).
-    const colStep = fontSize * 0.48;
+    const colStep = fontSize * 0.56;
 
     const rebuildColumns = () => {
       const columns = Math.floor(canvas.width / colStep);
+      const columnDir = Array.from({ length: columns }, (_, i) => (i % 2 === 0 ? 1 : -1));
+      const rowSpan = canvas.height / fontSize;
       return {
         columns,
-        drops: Array(columns)
-          .fill(0)
-          .map(() => Math.random() * -(canvas.height / fontSize)),
+        columnDir,
+        drops: Array.from({ length: columns }, (_, i) =>
+          columnDir[i] > 0
+            ? Math.random() * -rowSpan
+            : rowSpan + Math.random() * rowSpan * 0.55
+        ),
         columnBases: Array(columns)
           .fill(0)
           .map(() => 0.28 + Math.random() * 0.48),
         columnOpacity: Array(columns)
           .fill(0)
-          .map(() => 0.38 + Math.random() * 0.52),
+          .map(() => 0.32 + Math.random() * 0.58),
       };
     };
 
     resize();
-    let { columns, drops, columnBases, columnOpacity } = rebuildColumns();
+    let { columns, columnDir, drops, columnBases, columnOpacity } = rebuildColumns();
 
     const onResize = () => {
       resize();
       const next = rebuildColumns();
       columns = next.columns;
+      columnDir = next.columnDir;
       drops = next.drops;
       columnBases = next.columnBases;
       columnOpacity = next.columnOpacity;
@@ -115,9 +121,11 @@ export default function MatrixRainBg(props) {
 
       for (let i = 0; i < columns; i++) {
         const x = i * colStep;
+        const dir = columnDir[i];
 
         for (let t = 0; t < tailSteps; t++) {
-          const row = drops[i] - t * 0.94;
+          // dir 1: rain falls (tail above head). dir -1: rain rises (tail below head).
+          const row = drops[i] - t * 0.94 * dir;
           const y = row * fontSize;
           if (y <= 0 || y >= canvas.height) continue;
 
@@ -150,10 +158,15 @@ export default function MatrixRainBg(props) {
           ctx.fillText(char, x, y);
         }
 
-        drops[i] += columnBases[i] * speedMul;
+        drops[i] += columnBases[i] * speedMul * dir;
 
-        if (drops[i] * fontSize > canvas.height) {
-          drops[i] = Math.random() * -20;
+        if (dir > 0) {
+          if (drops[i] * fontSize > canvas.height) {
+            drops[i] = Math.random() * -20;
+            columnOpacity[i] = 0.15 + Math.random() * 0.5;
+          }
+        } else if (drops[i] < 0) {
+          drops[i] = canvas.height / fontSize + Math.random() * 25;
           columnOpacity[i] = 0.15 + Math.random() * 0.5;
         }
       }

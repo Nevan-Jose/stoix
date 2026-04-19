@@ -140,17 +140,25 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-mono text-glow">Protocol active</h2>
-          <p className="text-muted-foreground font-mono text-sm mt-1">
+          <h2 className="text-2xl sm:text-3xl font-mono text-glow text-primary">Protocol active</h2>
+          <p className="text-primary/70 font-mono text-sm mt-1">
             {tasks.length} days &middot;{' '}
             {goal.length > 60 ? goal.slice(0, 60) + '…' : goal}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleDownloadIcs} variant="outline" className="gap-2">
+          <Button
+            onClick={handleDownloadIcs}
+            variant="outline"
+            className="gap-2 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:text-primary backdrop-blur-none"
+          >
             <Calendar className="w-4 h-4" /> Download .ics
           </Button>
-          <Button onClick={onReset} variant="outline" className="gap-2">
+          <Button
+            onClick={onReset}
+            variant="outline"
+            className="gap-2 border-primary/50 bg-transparent text-primary hover:bg-primary/10 hover:text-primary backdrop-blur-none"
+          >
             <RotateCcw className="w-4 h-4" /> New Mission
           </Button>
         </div>
@@ -158,16 +166,16 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Month calendar ── */}
-        <div className="lg:col-span-2 border border-border border-glow rounded-lg p-4 sm:p-6 bg-card/80 backdrop-blur-sm">
+        <div className="lg:col-span-2 rounded-lg p-4 sm:p-6 bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)]">
           {/* Month nav */}
           <div className="flex items-center justify-between mb-6">
-            <Button variant="ghost" size="icon" onClick={prevMonth} className="text-foreground">
+            <Button variant="ghost" size="icon" onClick={prevMonth} className="text-primary hover:bg-primary/10">
               <ChevronLeft className="w-5 h-5" />
             </Button>
             <h3 className="font-mono text-lg text-glow">
               {format(currentMonth, 'MMMM yyyy')}
             </h3>
-            <Button variant="ghost" size="icon" onClick={nextMonth} className="text-foreground">
+            <Button variant="ghost" size="icon" onClick={nextMonth} className="text-primary hover:bg-primary/10">
               <ChevronRight className="w-5 h-5" />
             </Button>
           </div>
@@ -175,7 +183,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
           {/* Grid */}
           <div className="grid grid-cols-7 gap-1">
             {weekDays.map(d => (
-              <div key={d} className="text-center font-mono text-xs text-muted-foreground py-2">{d}</div>
+              <div key={d} className="text-center font-mono text-xs text-primary/65 py-2">{d}</div>
             ))}
 
             {Array(startDow).fill(null).map((_, i) => <div key={`e-${i}`} />)}
@@ -193,9 +201,9 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
                   disabled={!hasTask}
                   className={`
                     relative aspect-square flex flex-col items-center justify-center rounded-xl font-mono text-sm transition-all duration-200 border border-transparent
-                    ${hasTask ? 'cursor-pointer hover:bg-primary/15 hover:border-primary/25 hover:shadow-[inset_0_0_0_1px_hsla(120,100%,50%,0.12)] active:scale-[0.97]' : 'opacity-30 cursor-default'}
-                    ${isSelected && hasTask ? 'bg-gradient-to-b from-primary/38 to-primary/18 border-primary/55 text-foreground shadow-[0_0_16px_hsla(120,100%,50%,0.18)]' : ''}
-                    ${hasTask && !isSelected ? 'text-foreground' : 'text-muted-foreground'}
+                    ${hasTask ? 'cursor-pointer hover:bg-primary/10 hover:border-primary/40 hover:shadow-[inset_0_0_0_1px_hsla(120,100%,50%,0.15)] active:scale-[0.97]' : 'opacity-30 cursor-default'}
+                    ${isSelected && hasTask ? 'bg-primary/15 border-primary text-primary shadow-[0_0_16px_hsla(120,100%,50%,0.2)]' : ''}
+                    ${hasTask && !isSelected ? 'text-primary' : 'text-primary/40'}
                   `}
                 >
                   <span>{format(day, 'd')}</span>
@@ -208,7 +216,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
           </div>
 
           {/* Phase legend */}
-          <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-3">
+          <div className="mt-4 pt-4 border-t border-primary/30 flex flex-wrap gap-3">
             {Object.entries(PHASE_COLORS).map(([phase, cls]) => (
               <span key={phase} className={`text-xs font-mono px-2 py-0.5 rounded border ${cls}`}>
                 {phase}
@@ -218,7 +226,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
         </div>
 
         {/* ── Task detail panel ── */}
-        <div className="border border-border border-glow rounded-lg p-4 sm:p-6 bg-card/80 backdrop-blur-sm">
+        <div className="rounded-lg p-4 sm:p-6 bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)]">
           {selectedTask ? (
             <motion.div
               key={selectedDay.toISOString()}
@@ -237,14 +245,14 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
                     {selectedTask.phase}
                   </Badge>
                 )}
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="font-mono text-xs text-primary/65">
                   {format(selectedDay, 'EEE, MMM d, yyyy')}
                 </span>
               </div>
 
               {/* Scheduled time */}
               {selectedTask.scheduledTime && (
-                <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-mono text-primary/70">
                   <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                   <span>{selectedTask.scheduledTime}</span>
                   {selectedTask.duration && <span>· {selectedTask.duration}</span>}
@@ -255,7 +263,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
               {selectedTask.milestone && (
                 <div className="flex items-start gap-2 text-xs font-mono">
                   <Target className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground leading-relaxed">{selectedTask.milestone}</span>
+                  <span className="text-primary/75 leading-relaxed">{selectedTask.milestone}</span>
                 </div>
               )}
 
@@ -265,14 +273,14 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
               </h3>
 
               {/* Description */}
-              <p className="font-mono text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+              <p className="font-mono text-sm text-primary/75 leading-relaxed whitespace-pre-line">
                 {selectedTask.description}
               </p>
 
               {/* Schedule note */}
               {selectedTask.scheduleNote && (
-                <div className="pt-3 border-t border-border">
-                  <div className="flex items-start gap-2 text-xs font-mono text-muted-foreground/70">
+                <div className="pt-3 border-t border-primary/30">
+                  <div className="flex items-start gap-2 text-xs font-mono text-primary/65">
                     <Calendar className="w-3 h-3 flex-shrink-0 mt-0.5 text-primary/60" />
                     <span className="italic">{selectedTask.scheduleNote}</span>
                   </div>
@@ -281,7 +289,7 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
             </motion.div>
           ) : (
             <div className="flex items-center justify-center h-full min-h-[200px]">
-              <p className="font-mono text-sm text-muted-foreground text-center">
+              <p className="font-mono text-sm text-primary/60 text-center">
                 Select a day on the calendar<br />to view its task
               </p>
             </div>
@@ -290,10 +298,10 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
       </div>
 
       {/* ── All-days list (mobile-friendly) ── */}
-      <div className="mt-6 border border-border border-glow rounded-lg bg-card/80 backdrop-blur-sm overflow-hidden">
-        <div className="p-4 border-b border-border flex items-center gap-3">
-          <h3 className="font-mono text-lg text-glow">All days</h3>
-          <span className="font-mono text-xs text-muted-foreground">{tasks.length} tasks</span>
+      <div className="mt-6 rounded-lg bg-transparent border border-primary/55 shadow-[0_0_20px_hsla(120,100%,50%,0.1)] overflow-hidden">
+        <div className="p-4 border-b border-primary/35 flex items-center gap-3">
+          <h3 className="font-mono text-lg text-glow text-primary">All days</h3>
+          <span className="font-mono text-xs text-primary/65">{tasks.length} tasks</span>
         </div>
         <div className="max-h-[400px] overflow-y-auto">
           {tasks.map((task, i) => {
@@ -305,26 +313,26 @@ export default function TaskCalendar({ tasks, goal, startDate, onReset }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: Math.min(i * 0.02, 1) }}
-                className={`p-4 border-b border-border/50 hover:bg-accent/30 cursor-pointer transition-colors ${isActive ? 'bg-primary/10' : ''}`}
+                className={`p-4 border-b border-primary/20 hover:bg-primary/5 cursor-pointer transition-colors ${isActive ? 'bg-primary/10' : ''}`}
                 onClick={() => setSelectedDay(addDays(planStart, i))}
               >
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col items-center gap-1 min-w-[50px]">
-                    <span className="font-mono text-xs text-muted-foreground">Day {i + 1}</span>
+                    <span className="font-mono text-xs text-primary/65">Day {i + 1}</span>
                     {task.scheduledTime && (
                       <span className="font-mono text-[10px] text-primary/70">{task.scheduledTime}</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                      <p className="font-mono text-sm text-foreground truncate">{task.title}</p>
+                      <p className="font-mono text-sm text-primary truncate">{task.title}</p>
                       {task.phase && (
                         <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border flex-shrink-0 ${phaseClass}`}>
                           {task.phase}
                         </span>
                       )}
                     </div>
-                    <p className="font-mono text-xs text-muted-foreground">
+                    <p className="font-mono text-xs text-primary/60">
                       {format(addDays(planStart, i), 'MMM d')}
                       {task.duration && ` · ${task.duration}`}
                     </p>
